@@ -63,19 +63,24 @@
 
         /* 占いメッセージ */
         .msg.bot {
-            background: rgba(25, 25, 55, 0.9);
-            border: 1px solid rgba(120, 100, 255, 0.4);
-            box-shadow: 0 0 14px rgba(120, 100, 255, 0.25);
-            color: #e8e8ff;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(120, 120, 255, 0.15) 1px, transparent 1px),
+                radial-gradient(circle at 70% 60%, rgba(120, 120, 255, 0.12) 1px, transparent 1px),
+                radial-gradient(circle at 40% 80%, rgba(120, 120, 255, 0.1) 1px, transparent 1px),
+                #ffffff;
+            background-size: 180px 180px;
+            color: #000;
             border-radius: 20px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
         }
 
         /* ユーザー */
         .msg.user {
             background: linear-gradient(135deg, #6a5cff, #9f7bff);
             color: white;
-            align-self: flex-end;
             border-radius: 20px;
+            box-shadow: 0 6px 18px rgba(120, 100, 255, 0.4);
+            align-self: flex-end;
         }
 
         /* 入力エリア */
@@ -154,14 +159,12 @@
         /* 結果カード */
         .result-section {
             background:
-                linear-gradient(180deg,
-                    rgba(20, 20, 45, 0.9),
-                    rgba(10, 10, 30, 0.9));
-            border: 1px solid rgba(140, 120, 255, 0.3);
-            border-radius: 12px;
-            padding: 18px;
-            box-shadow: 0 0 25px rgba(120, 100, 255, 0.25);
-            margin-top: 10px;
+                radial-gradient(circle at 20% 30%, rgba(120, 120, 255, 0.15) 1px, transparent 1px),
+                radial-gradient(circle at 70% 60%, rgba(120, 120, 255, 0.12) 1px, transparent 1px),
+                white;
+            background-size: 200px 200px;
+            border-radius: 20px;
+            box-shadow: 0 6px 22px rgba(0, 0, 0, 0.2);
         }
 
         /* タイトル */
