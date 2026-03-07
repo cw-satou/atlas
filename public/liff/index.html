@@ -569,7 +569,7 @@
         function stepConcerns() {
             const nameForDisplay = getUserNameForDisplay();
             const text = [
-                `${nameForDisplay}さんがいま、特に気になっているテーマを教えてください。`,
+                `${nameForDisplay}がいま、特に気になっているテーマを教えてください。`,
                 '複数選んでも大丈夫です。'
             ].join('\n\n');
 
@@ -645,7 +645,7 @@
 
             // ② 悩みの確認＋診断開始メッセージ（bot側）
             const confirmText = [
-                `${nameForDisplay}さんの今のお悩みはわかりました。ありがとうございます。`,
+                `${nameForDisplay}の今のお悩みはわかりました。ありがとうございます。`,
                 "この内容で、星と石の流れを読み解いていきます。少しだけお待ちくださいね。"
             ].join("\n");
 
@@ -851,7 +851,7 @@
 
         function stepOrderChoice() {
             const nameForDisplay = getUserNameForDisplay();
-            addMsg(`この石を身につけるとしたら、どのようなかたちが今の${nameForDisplay}さんにしっくりきそうか教えてください。`, false);
+            addMsg(`この石を身につけるとしたら、どのようなかたちが今の${nameForDisplay}にしっくりきそうか教えてください。`, false);
 
             setInputArea(`
                 <button class="btn" onclick="selectOrderType('custom')">🎨 オーダーメイド（カスタマイズ）</button>
@@ -973,14 +973,14 @@
             clearInputArea();
             const section = document.createElement('div');
             section.className = 'result-section';
-            let html = `<h3>💎 ${nameForDisplay}さんを導くブレスレットはこれです</h3>`;
+            let html = `<h3>💎 ${nameForDisplay}を導くブレスレットはこれです</h3>`;
             html += `<p>${formatText(data.design_text || 'デザイン情報がありません')}</p>`;
             section.innerHTML = html;
             document.getElementById('chatBox').appendChild(section);
             if (data.order_summary) {
                 const orderSection = document.createElement('div');
                 orderSection.className = 'result-section';
-                orderSection.innerHTML = `<h3>📋 ${nameForDisplay}さんを導く石たち</h3><p style="font-size:13px;">${data.order_summary.replace(/\n/g, '<br>')}</p>`;
+                orderSection.innerHTML = `<h3>📋 ${nameForDisplay}を導く石たち</h3><p style="font-size:13px;">${data.order_summary.replace(/\n/g, '<br>')}</p>`;
                 document.getElementById('chatBox').appendChild(orderSection);
             }
             document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
