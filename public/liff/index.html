@@ -102,8 +102,8 @@
             max-width: 85%;
             line-height: 1.7;
             font-size: 14px;
-            border: 1px solid #ddd;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid transparent;
+            box-shadow: none;
         }
 
         /* 占いメッセージ */
@@ -113,7 +113,7 @@
             border-radius: 20px;
             border: 1px solid #8f8f8f;
             box-shadow:
-                0 0 16px 4px rgba(80, 150, 255, 0.55),
+                0 0 18px 4px rgba(80, 150, 255, 0.55),
                 0 0 4px 0 rgba(80, 150, 255, 0.9);
         }
 
@@ -125,7 +125,7 @@
             align-self: flex-end;
             border: 2px solid #63946e;
             box-shadow:
-                0 0 16px 4px rgba(120, 220, 170, 0.55),
+                0 0 18px 4px rgba(120, 220, 170, 0.55),
                 0 0 4px 0 rgba(120, 220, 170, 0.95);
         }
 
@@ -786,9 +786,9 @@
             window.location.href = "https://line.me/R/ti/p/あなたのID";
         }
         function restartFromBeginning() {
-            document.getElementById('chatBox').innerHTML = '';
-            const greeting = getGreetingMessage();
-            document.getElementById('chatBox').innerHTML = `<div class="msg bot">${greeting}</div>`;
+            const box = document.getElementById('chatBox');
+            box.innerHTML = '';
+            addMsg(getGreetingMessage(), false); // キュー経由でタイプライター
             const saved = localStorage.getItem('hoshin-profile');
             console.log('Loaded from storage:', saved);
             if (saved) {
@@ -799,6 +799,7 @@
                 stepModeSelect();
             }
         }
+
         function askReuseProfile() {
             const birth = formData.birth || {};
             const summary = [
@@ -821,9 +822,12 @@
         }
         function resetProfile() {
             formData = {};
-            document.getElementById('chatBox').innerHTML = `<div class="msg bot">${getGreetingMessage()}</div>`;
+            const box = document.getElementById('chatBox');
+            box.innerHTML = '';
+            addMsg(getGreetingMessage(), false);
             stepModeSelect();
         }
+
         function nextStep() {
             if (userState === 'astrological_info') {
                 const date = document.getElementById('birthDate')?.value;
