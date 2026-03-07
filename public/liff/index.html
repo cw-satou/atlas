@@ -498,6 +498,7 @@
             addMsg('診断に必要な情報をお聞きします。', false);
             const gender = formData.gender || '';
             const birth = formData.birth || {};
+            const savedName = formData.name || '';
             const savedDate = birth.date || '';
             const savedTime = birth.time || '';
             const savedPlace = birth.place || '';
@@ -1260,6 +1261,7 @@
                 }
 
                 formData.birth = { date, time, place };
+                formData.name = name;
                 console.log('Saved astrological info:', formData.birth);
                 saveProfileToLocalStorage();
 
