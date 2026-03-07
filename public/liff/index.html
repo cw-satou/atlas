@@ -933,31 +933,102 @@
 
 
         function stepOrderChoice() {
-            const nameForDisplay = getUserNameForDisplay();
-            addMsg(`この石を身につけるとしたら、どのようなかたちが今の${nameForDisplay}にしっくりきそうか教えてください。`, false);
+            addMsg(
+                "この石を身につけるとしたら、どのようなかたちが今のあなたにしっくりきそうか教えてください。",
+                false
+            );
 
             setInputArea(`
-                <button class="btn" onclick="selectOrderType('custom')">🎨 オーダーメイド（カスタマイズ）</button>
-                <button class="btn btn-secondary" onclick="selectOrderType('shop')">🛍️ ネットショップから選ぶ</button>
-            `);
+        <button class="btn" onclick="selectOrderType('custom')">🎨 オーダーメイド（カスタマイズ）</button>
+        <button class="btn btn-secondary" onclick="selectOrderType('shop')">🛍️ ネットショップから選ぶ</button>
+    `);
         }
         function selectOrderType(type) {
-            const label = type === 'custom'
-                ? 'オーダーメイドでお願いする'
-                : 'ショップで見る';
-            addMsg(label, true);     // ★ 追加
-
             if (type === 'custom') {
+                addMsg('オーダーメイド（カスタマイズ）', true);
                 stepBraceletSize();
             } else {
-                addMsg('ショップで見る', false);
-                clearInputArea();
-                setInputArea(`
-          <button class="btn btn-secondary" onclick="restartFromBeginning()">はじめからやり直す</button>
-        `);
+                addMsg('ネットショップから選ぶ', true);
+
+                const method = formData.stone_method;   // 'color' | 'effect' | 'zodiac' | 'moon'
+                const option = formData.stone_option;   // 下の options 一覧のいずれか
+
+                // ★ ここをこれから埋めていくマップ
+                // 実際のURLに合わせて各値を修正してください
+                const categoryUrlMap = {
+                    color: {
+                        '紫': 'https://spicastar.info/atlas/shop/product-category/color-purple/',
+                        'ピンク': 'https://spicastar.info/atlas/shop/product-category/color-pink/',
+                        '黄': 'https://spicastar.info/atlas/shop/product-category/color-yellow/',
+                        '透明': 'https://spicastar.info/atlas/shop/product-category/color-clear/',
+                        '黒': 'https://spicastar.info/atlas/shop/product-category/color-black/',
+                        '水色': 'https://spicastar.info/atlas/shop/product-category/color-lightblue/',
+                        '紺': 'https://spicastar.info/atlas/shop/product-category/color-navy/',
+                        '茶金': 'https://spicastar.info/atlas/shop/product-category/color-brown-gold/',
+                        '白': 'https://spicastar.info/atlas/shop/product-category/color-white/',
+                        '赤': 'https://spicastar.info/atlas/shop/product-category/color-red/'
+                    },
+                    effect: {
+                        '愛情': 'https://spicastar.info/atlas/shop/product-category/effect-love/',
+                        '癒し': 'https://spicastar.info/atlas/shop/product-category/effect-healing/',
+                        '金運': 'https://spicastar.info/atlas/shop/product-category/effect-money/',
+                        '浄化': 'https://spicastar.info/atlas/shop/product-category/effect-purify/',
+                        '保護': 'https://spicastar.info/atlas/shop/product-category/effect-protection/',
+                        '直感': 'https://spicastar.info/atlas/shop/product-category/effect-intuition/',
+                        '情熱': 'https://spicastar.info/atlas/shop/product-category/effect-passion/',
+                        '女性性': 'https://spicastar.info/atlas/shop/product-category/effect-femininity/'
+                    },
+                    zodiac: {
+                        '牡羊座': 'https://spicastar.info/atlas/shop/product-category/zodiac-aries/',
+                        '牡牛座': 'https://spicastar.info/atlas/shop/product-category/zodiac-taurus/',
+                        '双子座': 'https://spicastar.info/atlas/shop/product-category/zodiac-gemini/',
+                        '蟹座': 'https://spicastar.info/atlas/shop/product-category/zodiac-cancer/',
+                        '獅子座': 'https://spicastar.info/atlas/shop/product-category/zodiac-leo/',
+                        '乙女座': 'https://spicastar.info/atlas/shop/product-category/zodiac-virgo/',
+                        '天秤座': 'https://spicastar.info/atlas/shop/product-category/zodiac-libra/',
+                        '蠍座': 'https://spicastar.info/atlas/shop/product-category/zodiac-scorpio/',
+                        '射手座': 'https://spicastar.info/atlas/shop/product-category/zodiac-sagittarius/',
+                        '山羊座': 'https://spicastar.info/atlas/shop/product-category/zodiac-capricorn/',
+                        '水瓶座': 'https://spicastar.info/atlas/shop/product-category/zodiac-aquarius/',
+                        '魚座': 'https://spicastar.info/atlas/shop/product-category/zodiac-pisces/'
+                    },
+                    moon: {
+                        '1月': 'https://spicastar.info/atlas/shop/product-category/moon-january/',
+                        '2月': 'https://spicastar.info/atlas/shop/product-category/moon-february/',
+                        '3月': 'https://spicastar.info/atlas/shop/product-category/moon-march/',
+                        '4月': 'https://spicastar.info/atlas/shop/product-category/moon-april/',
+                        '5月': 'https://spicastar.info/atlas/shop/product-category/moon-may/',
+                        '6月': 'https://spicastar.info/atlas/shop/product-category/moon-june/',
+                        '7月': 'https://spicastar.info/atlas/shop/product-category/moon-july/',
+                        '8月': 'https://spicastar.info/atlas/shop/product-category/moon-august/',
+                        '9月': 'https://spicastar.info/atlas/shop/product-category/moon-september/',
+                        '10月': 'https://spicastar.info/atlas/shop/product-category/moon-october/',
+                        '11月': 'https://spicastar.info/atlas/shop/product-category/moon-november/',
+                        '12月': 'https://spicastar.info/atlas/shop/product-category/moon-december/'
+                    }
+                };
+
+                // デフォルトはショップトップ
+                let url = 'https://spicastar.info/atlas/shop/';
+
+                if (method && option &&
+                    categoryUrlMap[method] &&
+                    categoryUrlMap[method][option]
+                ) {
+                    url = categoryUrlMap[method][option];
+
+                    // 解析用にクエリを付ける（不要ならこの3行は削除してOK）
+                    const params = new URLSearchParams({
+                        from: 'atlas-chat',
+                        method: method,
+                        choice: option
+                    });
+                    url = `${url}?${params.toString()}`;
+                }
+
+                window.location.href = url;
             }
         }
-
         function stepBraceletSize() {
             addMsg(
                 "ブレスレットのサイズとタイプを決めていきましょう。普段の服装や、着けたいシーンをなんとなく思い浮かべながら選んでみてください。手首の内径は実際には買って近いものをお選びください。※サイズのお直しが発生しないようにお間違えないようにご注意ください。",
