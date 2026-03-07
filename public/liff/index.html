@@ -129,6 +129,15 @@
                 0 0 4px 0 rgba(120, 220, 170, 0.95);
         }
 
+        .result-section p strong,
+        .msg.bot strong,
+        .msg.user strong {
+            font-weight: 700;
+            /* 太くする */
+            color: #333;
+            /* 少し濃くする（好みで） */
+        }
+
         /* 入力エリア */
         .input-area {
             padding: 20px;
@@ -653,7 +662,6 @@
             }
         }
 
-
         function displayDivinationResult(result) {
             clearInputArea();
 
@@ -736,84 +744,8 @@
             }
 
             async function showCurrentSection() {
-                const lastIndex = sections.length - 1;
-                const stoneSupportIndex = lastIndex;
-                const braceletProposalIndex = lastIndex - 1;
-
-                // 1) 運命の地図〜オラクルまで + 石の選び方と意図 までは普通に順番に出す
-                if (currentIndex < stoneSupportIndex) {
-                    const sec = sections[currentIndex];
-
-                    await addMsg(sec.lead, false);
-
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'msg bot';
-                    const inner = document.createElement('div');
-                    inner.className = 'result-section';
-
-                    const h3 = document.createElement('h3');
-                    h3.textContent = sec.title;
-
-                    const p = document.createElement('p');
-
-                    inner.appendChild(h3);
-                    inner.appendChild(p);
-                    wrapper.appendChild(inner);
-                    chatBox.appendChild(wrapper);
-                    scrollChatToBottom();
-
-                    await typeIntoElement(p, sec.text, 20);
-
-                    const isBraceletProposal = (currentIndex === braceletProposalIndex);
-                    setInputArea(`
-        <button class="btn" onclick="showNextSection()">
-          ${isBraceletProposal ? '▶ あなたを導く石を見る' : '▶ 次のメッセージを読む'}
-        </button>
-      `);
-                    return;
-                }
-
-                // 2) stone_support_message の番（＝ bracelet_proposal の次）
-                if (currentIndex === stoneSupportIndex) {
-                    const supportSec = sections[stoneSupportIndex];
-
-                    // 2-1 あなたを導く運命の石
-                    const finalWrapper = document.createElement('div');
-                    finalWrapper.className = 'msg bot';
-                    finalWrapper.innerHTML = `
-        <div class="result-section">
-          <h3>あなたを導く運命の石</h3>
-          <p>
-            今のあなたを最も力強く導いてくれるのは――<br><br>
-            <strong style="font-size:18px;">${stoneName}</strong>
-          </p>
-        </div>
-      `;
-                    chatBox.appendChild(finalWrapper);
-                    scrollChatToBottom();
-
-                    // 2-2 石からのサポートメッセージ
-                    await addMsg(supportSec.lead, false);
-
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'msg bot';
-                    const inner = document.createElement('div');
-                    inner.className = 'result-section';
-
-                    const h3 = document.createElement('h3');
-                    h3.textContent = supportSec.title;
-
-                    const p = document.createElement('p');
-
-                    inner.appendChild(h3);
-                    inner.appendChild(p);
-                    wrapper.appendChild(inner);
-                    chatBox.appendChild(wrapper);
-                    scrollChatToBottom();
-
-                    await typeIntoElement(p, supportSec.text, 20);
-
-                    // 3) ブレスレット誘導
+                // 全セクション読み終えたら → ブレスレット誘導へ
+                if (currentIndex >= sections.length) {
                     await addMsg(
                         [
                             "ここまで読んでくださってありがとうございます。",
@@ -849,6 +781,35 @@
       `);
                     return;
                 }
+
+                const sec = sections[currentIndex];
+
+                await addMsg(sec.lead, false);
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'msg bot';
+                const inner = document.createElement('div');
+                inner.className = 'result-section';
+
+                const h3 = document.createElement('h3');
+                h3.textContent = sec.title;
+
+                const p = document.createElement('p');
+
+                inner.appendChild(h3);
+                inner.appendChild(p);
+                wrapper.appendChild(inner);
+                chatBox.appendChild(wrapper);
+                scrollChatToBottom();
+
+                await typeIntoElement(p, sec.text, 20);
+
+                const isLast = (currentIndex === sections.length - 1);
+                setInputArea(`
+      <button class="btn" onclick="showNextSection()">
+        ${isLast ? '▶ 最後のメッセージまで読む' : '▶ 次のメッセージを読む'}
+      </button>
+    `);
             }
 
             window.showNextSection = function () {
@@ -857,312 +818,6 @@
             };
 
             showCurrentSection();
-        }
-
-
-        function typeIntoElement(element, rawText, speed = 20) {
-            return new Promise((resolve) => {
-                const html = formatText(rawText);
-                let i = 0;
-                element.innerHTML = '';
-
-                function step() {
-                    if (i < html.length) {
-                        element.innerHTML = html.slice(0, i + 1);
-                        i++;
-                        scrollChatToBottom();
-                        setTimeout(step, speed);
-                    } else {
-                        resolve();
-                    }
-                }
-                step();
-            });
-        }
-
-        async function showCurrentSection() {
-            const lastIndex = sections.length - 1; // stone_support_message のインデックス
-            const stoneSupportIndex = lastIndex;
-            const braceletProposalIndex = lastIndex - 1;
-
-            // まだ bracelet_proposal より前
-            if (currentIndex < braceletProposalIndex) {
-                const sec = sections[currentIndex];
-
-                await addMsg(sec.lead, false);
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'msg bot';
-                const inner = document.createElement('div');
-                inner.className = 'result-section';
-
-                const h3 = document.createElement('h3');
-                h3.textContent = sec.title;
-
-                const p = document.createElement('p');
-
-                inner.appendChild(h3);
-                inner.appendChild(p);
-                wrapper.appendChild(inner);
-                chatBox.appendChild(wrapper);
-                scrollChatToBottom();
-
-                await typeIntoElement(p, sec.text, 20);
-
-                setInputArea(`
-      <button class="btn" onclick="showNextSection()">
-        ▶ 次のメッセージを読む
-      </button>
-    `);
-                return;
-            }
-
-            // bracelet_proposal の番
-            if (currentIndex === braceletProposalIndex) {
-                const sec = sections[braceletProposalIndex];
-
-                await addMsg(sec.lead, false);
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'msg bot';
-                const inner = document.createElement('div');
-                inner.className = 'result-section';
-
-                const h3 = document.createElement('h3');
-                h3.textContent = sec.title;
-
-                const p = document.createElement('p');
-
-                inner.appendChild(h3);
-                inner.appendChild(p);
-                wrapper.appendChild(inner);
-                chatBox.appendChild(wrapper);
-                scrollChatToBottom();
-
-                await typeIntoElement(p, sec.text, 20);
-
-                // このあとに「あなたを導く運命の石」を出したいので、
-                // ボタン文言だけ変えておく
-                setInputArea(`
-      <button class="btn" onclick="showNextSection()">
-        ▶ あなたを導く石を見る
-      </button>
-    `);
-                return;
-            }
-
-            // stone_support_message の番（= bracelet_proposal の次）
-            if (currentIndex === stoneSupportIndex) {
-                const supportSec = sections[stoneSupportIndex];
-
-                // ① まず「あなたを導く運命の石」
-                const finalWrapper = document.createElement('div');
-                finalWrapper.className = 'msg bot';
-                finalWrapper.innerHTML = `
-      <div class="result-section">
-        <h3>あなたを導く運命の石</h3>
-        <p>
-          今のあなたを最も力強く導いてくれるのは――<br><br>
-          <strong style="font-size:18px;">${stoneName}</strong>
-        </p>
-      </div>
-    `;
-                chatBox.appendChild(finalWrapper);
-                scrollChatToBottom();
-
-                // ② 「石からのサポートメッセージ」
-                await addMsg(supportSec.lead, false);
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'msg bot';
-                const inner = document.createElement('div');
-                inner.className = 'result-section';
-
-                const h3 = document.createElement('h3');
-                h3.textContent = supportSec.title;
-
-                const p = document.createElement('p');
-
-                inner.appendChild(h3);
-                inner.appendChild(p);
-                wrapper.appendChild(inner);
-                chatBox.appendChild(wrapper);
-                scrollChatToBottom();
-
-                await typeIntoElement(p, supportSec.text, 20);
-
-                // ③ ブレスレット誘導
-                await addMsg(
-                    [
-                        "ここまで読んでくださってありがとうございます。",
-                        "",
-                        "この結果を読むだけでも、石たちのエネルギーは少しずつあなたに届き始めています。",
-                        "もし「実際に身につけてみたい」「お守りとしてそばに置いておきたい」と感じたら、",
-                        "今のあなたに合わせてブレスレットのかたちに整えることもできますよ。"
-                    ].join("\n"),
-                    false
-                );
-
-                await addMsg(
-                    [
-                        "もちろん、このまま今日のメッセージを心に留めておくだけでも十分ですが、",
-                        "実際に石を身につけると、ふと目に入るたびに「今日の自分の軸」を思い出しやすくなります。",
-                        "",
-                        "ここから先は、",
-                        "・今のあなたの手首サイズに合わせて",
-                        "・今回選ばれた石たちを中心に",
-                        "・普段の服装やシーンにもなじむように",
-                        "あなただけのブレスレットにデザインしていくステップです。"
-                    ].join("\n"),
-                    false
-                );
-
-                setInputArea(`
-      <button class="btn" onclick="stepOrderChoice()">
-        💎 この石たちでブレスレットのイメージを見てみる
-      </button>
-      <button class="btn btn-secondary" onclick="restartFromBeginning()">
-        🔄 今日は読むだけにして、もう一度占ってみる
-      </button>
-    `);
-                return;
-            }
-        }
-
-        function typeIntoElement(element, rawText, speed = 20) {
-            return new Promise((resolve) => {
-                const html = formatText(rawText);
-                let i = 0;
-                element.innerHTML = '';
-
-                function step() {
-                    if (i < html.length) {
-                        element.innerHTML = html.slice(0, i + 1);
-                        i++;
-                        scrollChatToBottom();
-                        setTimeout(step, speed);
-                    } else {
-                        resolve();
-                    }
-                }
-                step();
-            });
-        }
-
-
-        async function showCurrentSection() {
-            const lastIndex = sections.length - 1;
-
-            // まだ「石の選び方と意図」まで来ていない間
-            if (currentIndex < lastIndex) {
-                const sec = sections[currentIndex];
-
-                await addMsg(sec.lead, false);
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'msg bot';
-                const inner = document.createElement('div');
-                inner.className = 'result-section';
-
-                const h3 = document.createElement('h3');
-                h3.textContent = sec.title;
-
-                const p = document.createElement('p');
-
-                inner.appendChild(h3);
-                inner.appendChild(p);
-                wrapper.appendChild(inner);
-                chatBox.appendChild(wrapper);
-                scrollChatToBottom();
-
-                await typeIntoElement(p, sec.text, 20);
-
-                const isBeforeLast = (currentIndex === lastIndex - 1);
-                setInputArea(`
-      <button class="btn" onclick="showNextSection()">
-        ${isBeforeLast ? '▶ あなたを導く石を見る' : '▶ 次のメッセージを読む'}
-      </button>
-    `);
-                return;
-            }
-
-            // ここに来た時点で currentIndex === lastIndex（＝ stone_support_message の番）
-            const supportSection = sections[lastIndex];
-
-            // ① まず「あなたを導く運命の石」カードを出す
-            const finalWrapper = document.createElement('div');
-            finalWrapper.className = 'msg bot';
-            finalWrapper.innerHTML = `
-    <div class="result-section">
-      <h3>あなたを導く運命の石</h3>
-      <p>
-        今のあなたを最も力強く導いてくれるのは――<br><br>
-        <strong style="font-size:18px;">${stoneName}</strong>
-      </p>
-    </div>
-  `;
-            chatBox.appendChild(finalWrapper);
-            scrollChatToBottom();
-
-            // ② そのあとに「石からのサポートメッセージ」をカードとして出す
-            await addMsg(
-                'ここからは、「この石が今のあなたをどんな風に支えてくれるのか」をまとめてお伝えしますね。',
-                false
-            );
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'msg bot';
-            const inner = document.createElement('div');
-            inner.className = 'result-section';
-
-            const h3 = document.createElement('h3');
-            h3.textContent = supportSection.title;
-
-            const p = document.createElement('p');
-
-            inner.appendChild(h3);
-            inner.appendChild(p);
-            wrapper.appendChild(inner);
-            chatBox.appendChild(wrapper);
-            scrollChatToBottom();
-
-            await typeIntoElement(p, supportSection.text, 20);
-
-            // ③ ブレスレットの誘導メッセージ
-            await addMsg(
-                [
-                    "ここまで読んでくださってありがとうございます。",
-                    "",
-                    "この結果を読むだけでも、石たちのエネルギーは少しずつあなたに届き始めています。",
-                    "もし「実際に身につけてみたい」「お守りとしてそばに置いておきたい」と感じたら、",
-                    "今のあなたに合わせてブレスレットのかたちに整えることもできますよ。"
-                ].join("\n"),
-                false
-            );
-
-            await addMsg(
-                [
-                    "もちろん、このまま今日のメッセージを心に留めておくだけでも十分ですが、",
-                    "実際に石を身につけると、ふと目に入るたびに「今日の自分の軸」を思い出しやすくなります。",
-                    "",
-                    "ここから先は、",
-                    "・今のあなたの手首サイズに合わせて",
-                    "・今回選ばれた石たちを中心に",
-                    "・普段の服装やシーンにもなじむように",
-                    "あなただけのブレスレットにデザインしていくステップです。"
-                ].join("\n"),
-                false
-            );
-
-            // ④ 最後にボタン
-            setInputArea(`
-    <button class="btn" onclick="stepOrderChoice()">
-      💎 この石たちでブレスレットのイメージを見てみる
-    </button>
-    <button class="btn btn-secondary" onclick="restartFromBeginning()">
-      🔄 今日は読むだけにして、もう一度占ってみる
-    </button>
-  `);
         }
 
 
