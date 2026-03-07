@@ -65,30 +65,52 @@
             position: relative;
         }
 
+        .msg::before {
+            content: "";
+            position: absolute;
+            left: -10px;
+            top: -12px;
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            clip-path: polygon(50% 0%,
+                    61% 35%,
+                    98% 35%,
+                    68% 57%,
+                    79% 91%,
+                    50% 70%,
+                    21% 91%,
+                    32% 57%,
+                    2% 35%,
+                    39% 35%);
+            box-shadow:
+                0 0 6px #8b6cff,
+                0 0 14px #8b6cff;
+        }
+
         /* 占いメッセージ */
         .msg.bot {
-            background:
-                radial-gradient(circle at 20% 30%, rgba(120, 120, 255, 0.15) 1px, transparent 1px),
-                radial-gradient(circle at 70% 60%, rgba(120, 120, 255, 0.12) 1px, transparent 1px),
-                radial-gradient(circle at 40% 80%, rgba(120, 120, 255, 0.1) 1px, transparent 1px),
-                #ffffff;
-            background-size: 180px 180px;
-            color: #000;
+            background: white;
+            color: #666;
             border-radius: 20px;
+            border: 2px solid #58d7ff;
             box-shadow:
-                0 6px 18px rgba(0, 0, 0, 0.18),
-                0 0 10px rgba(120, 100, 255, 0.25);
+                0 0 6px rgba(88, 215, 255, 0.8),
+                0 0 16px rgba(88, 215, 255, 0.6),
+                0 0 30px rgba(88, 215, 255, 0.4);
         }
 
         /* ユーザー */
         .msg.user {
-            background: linear-gradient(135deg, #6a5cff, #9f7bff);
-            color: white;
+            background: white;
+            color: #666;
             border-radius: 20px;
             align-self: flex-end;
+            border: 2px solid #b48cff;
             box-shadow:
-                0 6px 18px rgba(0, 0, 0, 0.2),
-                0 0 16px rgba(140, 120, 255, 0.6);
+                0 0 6px rgba(180, 140, 255, 0.8),
+                0 0 16px rgba(180, 140, 255, 0.6),
+                0 0 30px rgba(180, 140, 255, 0.4);
         }
 
         /* 入力エリア */
@@ -361,6 +383,18 @@
                 </div>
                 <button class="btn" onclick="nextStep()">次へ</button>
             `);
+            flatpickr("#birthDate", {
+                locale: "ja",
+                dateFormat: "Y-m-d",
+                maxDate: "today"
+            });
+
+            flatpickr("#birthTime", {
+                enableTime: true,
+                noCalendar: true,
+                dateFormat: "H:i",
+                time_24hr: true
+            });
         }
         function selectGender(gender, el) {
             formData.gender = gender;
@@ -731,17 +765,6 @@
                 stepModeSelect();
             }
         };
-        flatpickr("#birthDate", {
-            locale: "ja",
-            dateFormat: "Y-m-d",
-            maxDate: "today",
-        });
-        flatpickr("#birthTime", {
-            enableTime: true,
-            noCalendar: true,
-            dateFormat: "H:i",
-            time_24hr: true
-        });
     </script>
     <script>
         const canvas = document.getElementById("starfield");
