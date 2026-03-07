@@ -1307,19 +1307,27 @@
 
                 await addMsg(`【今日の運勢】\n${text}`, false);
 
+                // ★ ここから分岐メッセージ＋ボタン
                 await addMsg(
-                    'この流れを踏まえて、今日はどんなテーマについて詳しく見ていきましょうか？',
+                    'この流れを踏まえて、あなたの導きの天然石を診断してみますか？',
                     false
                 );
-                stepConcerns();   // 既存のテーマ選択へ
 
+                setInputArea(`
+          <button class="btn" onclick="startStoneDivination()">
+            💎 導きの天然石を診断
+          </button>
+          <button class="btn btn-secondary" onclick="restartFromBeginning()">
+            🔄 最初に戻る
+          </button>
+        `);
             } catch (e) {
                 await addMsg(
                     'AIにうまくアクセスできませんでした。\n少し時間をおいてからもう一度お試しください。',
                     false
                 );
                 setInputArea(`
-          <button class="btn" onclick="stepConcerns()">💬 テーマを決めて占う</button>
+          <button class="btn" onclick="restartFromBeginning()">🔄 最初に戻る</button>
         `);
             }
         }
