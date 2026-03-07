@@ -411,13 +411,12 @@
         async function stepTodayFortune() {
             const birth = formData.birth || {};
 
-            // 必要情報がなければプロフィール入力に戻す
             if (!birth.date) {
                 await addMsg(
                     '今日の運勢を読むために、生年月日・生まれた時間と場所を教えていただけますか？',
                     false
                 );
-                showAstrologicalInfoForm();   // 既存フォームを再利用
+                showAstrologicalInfoForm();
                 return;
             }
 
@@ -440,22 +439,52 @@
 
                 await addMsg(`【今日の運勢】\n${text}`, false);
 
-                // ここからいつものテーマ選択へつなぐ
+                // ★ ここから追記：運勢を読んだ感想・状況を入力してもらう
                 await addMsg(
-                    'この流れを踏まえて、今日はどんなテーマについて詳しく見ていきましょうか？',
+                    'この今日の運勢を読んで、\n今の気分や「ここが気になった」などがあれば、一言でいいので教えてもらえますか？',
                     false
                 );
-                stepConcerns();   // 既存の「恋愛・仕事・金運…」選択へ
+
+                setInputArea(`
+          <div class="input-field">
+            <label>今の気分や、気になったポイントがあれば一言で</label>
+            <textarea id="todayComment" rows="3" placeholder="例）最近ちょっと気持ちが落ち込み気味です"></textarea>
+          </div>
+          <button class="btn" onclick="submitTodayComment()">送信して、詳しく占ってもらう</button>
+        `);
+
             } catch (e) {
                 await addMsg(
                     'AIにうまくアクセスできませんでした。\n少し時間をおいてからもう一度お試しください。',
                     false
                 );
                 setInputArea(`
-      <button class="btn" onclick="stepConcerns()">💬 テーマを決めて占う</button>
-    `);
+          <button class="btn" onclick="stepConcerns()">💬 テーマを決めて占う</button>
+        `);
             }
         }
+
+        function submitTodayComment() {
+            const textarea = document.getElementById('todayComment');
+            const comment = (textarea && textarea.value.trim()) || '';
+
+            if (comment) {
+                // ユーザー発話として表示
+                addMsg(comment, true);
+                // プロフィールに保存しておく（問題文などと合わせて後でAPIに渡せる）
+                formData.today_comment = comment;
+            }
+
+            clearInputArea();
+
+            // いつものテーマ選択へ
+            addMsg(
+                'ありがとうございます。\nでは、この流れを踏まえて、今日はどんなテーマについて詳しく見ていきましょうか？',
+                false
+            );
+            stepConcerns();
+        }
+
 
         function stepDivinationIntro() {
             const text = [
@@ -950,11 +979,15 @@
             } else {
                 addMsg('ネットショップから選ぶ', true);
 
-                const method = formData.stone_method;   // 'color' | 'effect' | 'zodiac' | 'moon'
-                const option = formData.stone_option;   // 下の options 一覧のいずれか
+                // ★ ネットショップへ行く前に一言伝える
+                addMsg(
+                    '今の診断結果に関連するブレスレットを、ネットショップでお見せしますね。',
+                    false
+                );
 
-                // ★ ここをこれから埋めていくマップ
-                // 実際のURLに合わせて各値を修正してください
+                const method = formData.stone_method;   // 'color' | 'effect' | 'zodiac' | 'moon'
+                const option = formData.stone_option;   // 各オプション名
+
                 const categoryUrlMap = {
                     color: {
                         '紫': 'https://spicastar.info/atlas/shop/product-category/color-purple/',
@@ -1008,7 +1041,6 @@
                     }
                 };
 
-                // デフォルトはショップトップ
                 let url = 'https://spicastar.info/atlas/shop/';
 
                 if (method && option &&
@@ -1017,7 +1049,6 @@
                 ) {
                     url = categoryUrlMap[method][option];
 
-                    // 解析用にクエリを付ける（不要ならこの3行は削除してOK）
                     const params = new URLSearchParams({
                         from: 'atlas-chat',
                         method: method,
