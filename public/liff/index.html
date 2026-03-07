@@ -856,26 +856,22 @@
             });
         }
 
-
         window.onload = async function () {
             const saved = localStorage.getItem('hoshin-profile');
-
             const box = document.getElementById('chatBox');
+
             box.innerHTML = '';
+            await addMsg(getGreetingMessage(), false);  // 挨拶を打ち終わるまで待つ
 
-            // ① 挨拶をタイプライター
-            await addMsg(getGreetingMessage(), false);
-
-            // ② 挨拶が打ち終わってから「どちらの方法で〜」
             if (saved) {
                 formData = JSON.parse(saved);
                 console.log('Initial load - formData:', formData);
-                await addMsg('前回のプロフィール情報を見つけました。', false);
-                askReuseProfile();
+                askReuseProfile();   // ここも必要なら async/await 化できる
             } else {
-                stepModeSelect();
+                stepModeSelect();    // ここで上の async stepModeSelect が走る
             }
         };
+
 
 
     </script>
