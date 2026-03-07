@@ -613,29 +613,25 @@
                 return;
             }
 
-            // ① ここで「悩みの確認＋診断開始メッセージ」を出す
+            // 悩みの確認＋診断開始メッセージ
             const confirmText = [
                 "あなたの今のお悩みは、こんな感じですね。",
                 "",
                 `「${problem}」`,
                 "",
-                "この内容で星と石の流れを読み解いていきます。少しだけお待ちくださいね。"
+                "この内容で、星と石の流れを読み解いていきます。少しだけお待ちくださいね。"
             ].join("\n");
-
-            // ユーザーの入力を一度そのままチャットに出したいなら、こちらもお好みで
-            // addMsg(problem, true);
 
             await addMsg(confirmText, false);
 
-            // ② ローディング表示
+            // ローディング表示
             setInputArea(`
-        <div class="loading">
-            <div class="spinner"></div>
-            <p>星の配置を読み解いています... 🌌</p>
-        </div>
-    `);
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>星の配置を読み解いています... 🌌</p>
+    </div>
+  `);
 
-            // ③ ここから先は今まで通り診断API呼び出し
             try {
                 const res = await fetch(`/api/diagnose`, {
                     method: 'POST',
@@ -666,6 +662,7 @@
 
             const chatBox = document.getElementById('chatBox');
 
+            // セクション定義（石からのサポート → 選び方 の順）
             const sections = [
                 {
                     key: 'destiny_map',
@@ -707,16 +704,15 @@
                     key: 'bracelet_proposal',
                     title: '石の選び方と意図',
                     text: result.bracelet_proposal,
-                    lead: 'ここからは、どんな意図で石を選び、どんな願いをサポートするのかを具体的にお話ししますね。'
+                    lead: 'ここからは、どんな意図で石を選び、どんな願いをサポートするのかをお話ししていきますね。'
                 },
                 {
                     key: 'stone_support_message',
                     title: '石からのサポートメッセージ',
                     text: result.stone_support_message,
-                    lead: '最後に、「今のあなたにこの石がどんな魔法で寄り添うのか」をまとめてお伝えします。'
+                    lead: ''  // ここはあとで個別処理に回すので空でもOK
                 },
             ].filter(sec => sec.text);
-
 
             let currentIndex = 0;
 
@@ -740,10 +736,36 @@
                 });
             }
 
-
             async function showCurrentSection() {
+                // 全セクション終了後
                 if (currentIndex >= sections.length) {
-                    // ……ここは今の「運命の石」表示ロジックのままでOK……
+                    // サポートメッセージ→選び方が終わった後の「安心＋誘導」
+                    await addMsg(
+                        [
+                            "ここまで読んでくださってありがとうございます。",
+                            "",
+                            "この結果を読むだけでも、石たちのエネルギーは少しずつあなたに届き始めています。",
+                            "もし「実際に身につけてみたい」「お守りとしてそばに置いておきたい」と感じたら、",
+                            "今のあなたに合わせてブレスレットのかたちに整えることもできますよ。"
+                        ].join("\n"),
+                        false
+                    );
+
+                    await addMsg(
+                        [
+                            "もちろん、このまま今日のメッセージを心に留めておくだけでも十分ですが、",
+                            "実際に石を身につけると、ふと目に入るたびに「今日の自分の軸」を思い出しやすくなります。",
+                            "",
+                            "ここから先は、",
+                            "・今のあなたの手首サイズに合わせて",
+                            "・今回選ばれた石たちを中心に",
+                            "・普段の服装やシーンにもなじむように",
+                            "あなただけのブレスレットにデザインしていくステップです。"
+                        ].join("\n"),
+                        false
+                    );
+
+                    // あなたを導く運命の石カード
                     const finalWrapper = document.createElement('div');
                     finalWrapper.className = 'msg bot';
                     finalWrapper.innerHTML = `
@@ -758,19 +780,94 @@
                     chatBox.appendChild(finalWrapper);
                     scrollChatToBottom();
 
+                    // ボタン（ハードル低い文言）
                     setInputArea(`
-        <button class="btn" onclick="stepOrderChoice()">💎 ブレスレットを作る</button>
-        <button class="btn btn-secondary" onclick="restartFromBeginning()">🔄 もう一度占う</button>
+        <button class="btn" onclick="stepOrderChoice()">
+          💎 この石たちでブレスレットのイメージを見てみる
+        </button>
+        <button class="btn btn-secondary" onclick="restartFromBeginning()">
+          🔄 今日は読むだけにして、もう一度占ってみる
+        </button>
       `);
                     return;
                 }
 
                 const sec = sections[currentIndex];
 
-                // ① つなぎの一言をチャットとしてタイプライター表示
+                // つなぎメッセージ
                 await addMsg(sec.lead, false);
 
-                // ② カード本体をタイプライター表示
+                // カード本体
+                const wrapper = document.createElement('div');
+                wrapper.className = 'msg bot';
+                const inner = document.createElement('div');
+                inner.className = 'result-section';
+
+                const h3 = document.createElement('h3');
+                h3.textContent = sec.title;
+
+                const p = document.createElement('p');
+
+                inner.appendChild(h3);
+                inner.appendChild(p);
+                wrapper.appendChild(inner);
+                chatBox.appendChild(wrapper);
+                scrollChatToBottom();
+
+                // 本文タイプライター
+                await typeIntoElement(p, sec.text, 20);
+
+                const isLast = (currentIndex === sections.length - 1);
+                setInputArea(`
+      <button class="btn" onclick="showNextSection()">
+        ${isLast ? '▶ 最後のメッセージへ' : '▶ 次のメッセージを読む'}
+      </button>
+    `);
+            }
+
+            // グローバルから呼ぶため
+            window.showNextSection = function () {
+                currentIndex += 1;
+                showCurrentSection();
+            };
+
+            // 最初の1枚
+            showCurrentSection();
+        }
+
+
+        let currentIndex = 0;
+
+        function typeIntoElement(element, rawText, speed = 20) {
+            return new Promise((resolve) => {
+                const html = formatText(rawText);
+                let i = 0;
+                element.innerHTML = '';
+
+                function step() {
+                    if (i < html.length) {
+                        element.innerHTML = html.slice(0, i + 1);
+                        i++;
+                        scrollChatToBottom();
+                        setTimeout(step, speed);
+                    } else {
+                        resolve();
+                    }
+                }
+                step();
+            });
+        }
+
+
+        async function showCurrentSection() {
+            const lastIndex = sections.length - 1;
+
+            // まだ「石の選び方と意図」まで来ていない間
+            if (currentIndex < lastIndex) {
+                const sec = sections[currentIndex];
+
+                await addMsg(sec.lead, false);
+
                 const wrapper = document.createElement('div');
                 wrapper.className = 'msg bot';
                 const inner = document.createElement('div');
@@ -789,23 +886,93 @@
 
                 await typeIntoElement(p, sec.text, 20);
 
-                const isLast = (currentIndex === sections.length - 1);
+                const isBeforeLast = (currentIndex === lastIndex - 1);
                 setInputArea(`
       <button class="btn" onclick="showNextSection()">
-        ${isLast ? '▶ 最後のメッセージへ' : '▶ 次のメッセージを読む'}
+        ${isBeforeLast ? '▶ あなたを導く石を見る' : '▶ 次のメッセージを読む'}
       </button>
     `);
+                return;
             }
 
-            window.showNextSection = function () {
-                currentIndex += 1;
-                showCurrentSection();
-            };
+            // ここに来た時点で currentIndex === lastIndex（＝ stone_support_message の番）
+            const supportSection = sections[lastIndex];
 
-            showCurrentSection();
+            // ① まず「あなたを導く運命の石」カードを出す
+            const finalWrapper = document.createElement('div');
+            finalWrapper.className = 'msg bot';
+            finalWrapper.innerHTML = `
+    <div class="result-section">
+      <h3>あなたを導く運命の石</h3>
+      <p>
+        今のあなたを最も力強く導いてくれるのは――<br><br>
+        <strong style="font-size:18px;">${stoneName}</strong>
+      </p>
+    </div>
+  `;
+            chatBox.appendChild(finalWrapper);
+            scrollChatToBottom();
+
+            // ② そのあとに「石からのサポートメッセージ」をカードとして出す
+            await addMsg(
+                'ここからは、「この石が今のあなたをどんな風に支えてくれるのか」をまとめてお伝えしますね。',
+                false
+            );
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'msg bot';
+            const inner = document.createElement('div');
+            inner.className = 'result-section';
+
+            const h3 = document.createElement('h3');
+            h3.textContent = supportSection.title;
+
+            const p = document.createElement('p');
+
+            inner.appendChild(h3);
+            inner.appendChild(p);
+            wrapper.appendChild(inner);
+            chatBox.appendChild(wrapper);
+            scrollChatToBottom();
+
+            await typeIntoElement(p, supportSection.text, 20);
+
+            // ③ ブレスレットの誘導メッセージ
+            await addMsg(
+                [
+                    "ここまで読んでくださってありがとうございます。",
+                    "",
+                    "この結果を読むだけでも、石たちのエネルギーは少しずつあなたに届き始めています。",
+                    "もし「実際に身につけてみたい」「お守りとしてそばに置いておきたい」と感じたら、",
+                    "今のあなたに合わせてブレスレットのかたちに整えることもできますよ。"
+                ].join("\n"),
+                false
+            );
+
+            await addMsg(
+                [
+                    "もちろん、このまま今日のメッセージを心に留めておくだけでも十分ですが、",
+                    "実際に石を身につけると、ふと目に入るたびに「今日の自分の軸」を思い出しやすくなります。",
+                    "",
+                    "ここから先は、",
+                    "・今のあなたの手首サイズに合わせて",
+                    "・今回選ばれた石たちを中心に",
+                    "・普段の服装やシーンにもなじむように",
+                    "あなただけのブレスレットにデザインしていくステップです。"
+                ].join("\n"),
+                false
+            );
+
+            // ④ 最後にボタン
+            setInputArea(`
+    <button class="btn" onclick="stepOrderChoice()">
+      💎 この石たちでブレスレットのイメージを見てみる
+    </button>
+    <button class="btn btn-secondary" onclick="restartFromBeginning()">
+      🔄 今日は読むだけにして、もう一度占ってみる
+    </button>
+  `);
         }
-
-
 
 
         function stepOrderChoice() {
