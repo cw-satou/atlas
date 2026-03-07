@@ -9,7 +9,7 @@ import json
 import traceback
 import sys
 import time
-
+from api.utils_perplexity import generate_today_fortune  # 新しく作る
 
 def diagnose():
     """
@@ -110,7 +110,25 @@ def diagnose():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": "Internal Server Error", "message": str(e)}), 500
-
+    
+def today_fortune():
+    """
+    今日の運勢を返すAPI。
+    入力：gender, birth{date,time,place} があれば使う（なければ「不明」で補う）
+    出力：{ "message": "..." } だけのシンプルなJSON
+    """
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        fortune = generate_today_fortune(data)
+        # 失敗時フォールバック
+        if isinstance(fortune, dict) and fortune.get("error"):
+            return jsonify({"message": "今日は、肩の力を少し抜いて、自分のペースを大切に過ごす日です。"}), 200
+        return jsonify({"message": fortune}), 200
+    except Exception as e:
+        return jsonify({
+            "message": "今日は、無理をせず、心と体の声を優先してあげてください。",
+            "error": str(e)
+        }), 200
 
 def build_bracelet():
     """

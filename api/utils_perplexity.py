@@ -87,6 +87,52 @@ AVAILABLE_STONES = """
 - カーネリアン（赤）
 """
 
+def generate_today_fortune(user_input: dict) -> str:
+    """生年月日・出生時間・出生地を使って「今日の運勢」を生成"""
+    if not client:
+        return "今日は、自分のペースを大切に過ごすと良さそうな日です。"
+
+    birth = user_input.get("birth", {})
+    gender = user_input.get("gender", "指定なし")
+
+    system_prompt = """
+あなたは、西洋占星術とクリスタルヒーリングに精通したプロの占い師です。
+生年月日・生まれた時間・生まれた場所から、その日の流れを読み解き、
+やさしく希望が持てる「今日の運勢」を1メッセージで伝えてください。
+"""
+
+    user_prompt = f"""
+以下の情報から、今日一日の運勢と過ごし方のヒントを日本語で1メッセージだけ生成してください。
+
+[ユーザー情報]
+- 性別: {gender}
+- 生年月日: {birth.get('date', '不明')}
+- 出生時間: {birth.get('time', '不明')}
+- 出生地: {birth.get('place', '不明')}
+
+[出力条件]
+- 1段落の目安は150文字前後。5段落で構成してください。
+- 最初に入力された情報の復唱と星座やエレメントの解釈
+- 以降は、生年月日の観点、生まれた場所の観点、生まれた時間の観点など、複数の角度から今日の運勢を読み解いてください。
+- 「今日のあなたは…」のように、今日一日の雰囲気と、どう過ごすと良いかのヒントを必ず入れてください。
+- 生まれた時間帯や生まれた場所の雰囲気から感じられる「人生の舞台設定」や、その日の星の流れに少し触れても構いません。
+- 専門用語を多用せず、占星術に詳しくない人にも分かる言葉で書いてください。
+- 箇条書きや【】の見出し、絵文字、記号は使わず、自然な文章1つだけにしてください。
+- JSONや説明文は不要です。占い結果の本文だけを返してください。
+"""
+
+    resp = client.chat.completions.create(
+        model="sonar-pro",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user",  "content": user_prompt},
+        ],
+        temperature=0.7,
+        max_tokens=400,
+    )
+
+    content = resp.choices[0].message.content.strip()
+    return content
 
 def create_user_prompt(user_input, oracle_result):
     """ユーザー情報とオラクル結果からプロンプトを生成"""

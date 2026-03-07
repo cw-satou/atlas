@@ -4,6 +4,7 @@ import os
 # ルーティングのインポート
 from api.diagnose import diagnose, build_bracelet
 from api.utils_sheet import get_diagnosis
+from api.utils_perplexity import generate_today_fortune
 
 app = Flask(__name__, static_folder='public', static_url_path='')
 
@@ -75,6 +76,23 @@ def fortune_detail():
 
     return jsonify(response)
 
+@app.route("/api/today-fortune", methods=["POST"])
+def today_fortune():
+    """
+    生年月日・出生時間・出生地を使って「今日の運勢」を返すAPI。
+    リクエストボディ: { gender, birth: {date, time, place} }
+    レスポンス: { "message": "..." }
+    """
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        message = generate_today_fortune(data)
+        return jsonify({"message": message}), 200
+    except Exception as e:
+        print(f"Today fortune error: {e}")
+        return jsonify({
+            "message": "今日は、無理をせず、自分のペースを大切に過ごすと良さそうな日です。",
+            "error": str(e),
+        }), 200
 # ===== エラーハンドラー =====
 
 @app.errorhandler(404)

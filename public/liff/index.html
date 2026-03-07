@@ -375,27 +375,88 @@
         function clearInputArea() {
             setInputArea('');
         }
-        async function stepModeSelect() {
+        function stepModeSelect() {
             userState = 'mode_select';
 
-            // ここで await すれば「前のメッセージが打ち終わってから」必ず出る
-            await addMsg('どちらの方法で石を選びますか？', false);
+            addMsg('どちらの方法で石を選びますか？', false);
 
             setInputArea(`
-    <button class="btn" onclick="selectMode('divination')">✨ 石の魔法の導きを得る（診断）</button>
-    <button class="btn btn-secondary" onclick="selectMode('stone_select')">💎 好みの石から魔法を得る</button>
+    <button class="btn" onclick="selectMode('today_fortune')">
+      🔮 今日の運勢を診断する
+    </button>
+    <button class="btn" onclick="selectMode('divination')">
+      ✨ 石の魔法の導きを得る（占い）
+    </button>
+    <button class="btn btn-secondary" onclick="selectMode('stone_select')">
+      💎 好みの石から魔法を得る
+    </button>
   `);
         }
+
         function selectMode(mode) {
             selectedMode = mode;
-            if (mode === 'divination') {
+
+            if (mode === 'today_fortune') {
+                addMsg('今日の運勢を診断する', true);
+                stepTodayFortune();          // 今日の運勢 → テーマへ流す関数
+            } else if (mode === 'divination') {
                 addMsg('石の魔法の導きを得る', true);
-                stepDivinationIntro();
+                stepDivinationIntro();       // 既存
             } else {
                 addMsg('好みの石から魔法を得る', true);
-                stepStoneSelectMethod();
+                stepStoneSelectMethod();     // 既存
             }
         }
+
+        async function stepTodayFortune() {
+            const birth = formData.birth || {};
+
+            // 必要情報がなければプロフィール入力に戻す
+            if (!birth.date) {
+                await addMsg(
+                    '今日の運勢を読むために、生年月日・生まれた時間と場所を教えていただけますか？',
+                    false
+                );
+                showAstrologicalInfoForm();   // 既存フォームを再利用
+                return;
+            }
+
+            await addMsg(
+                '生まれた時間と場所も含めて、AIに今日の運勢を聞いてみますね。',
+                false
+            );
+
+            try {
+                const res = await fetch('/api/today-fortune', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        gender: formData.gender,
+                        birth: birth
+                    })
+                });
+                const json = await res.json();
+                const text = json.message || '今日は、自分のペースを大切に過ごすと良さそうな日です。';
+
+                await addMsg(`【今日の運勢】\n${text}`, false);
+
+                // ここからいつものテーマ選択へつなぐ
+                await addMsg(
+                    'この流れを踏まえて、今日はどんなテーマについて詳しく見ていきましょうか？',
+                    false
+                );
+                stepConcerns();   // 既存の「恋愛・仕事・金運…」選択へ
+            } catch (e) {
+                await addMsg(
+                    'AIにうまくアクセスできませんでした。\n少し時間をおいてからもう一度お試しください。',
+                    false
+                );
+                setInputArea(`
+      <button class="btn" onclick="stepConcerns()">💬 テーマを決めて占う</button>
+    `);
+            }
+        }
+
         function stepDivinationIntro() {
             const text = [
                 "まずは、今のあなたについて少しだけ教えてください。",
@@ -450,15 +511,15 @@
             showAstrologicalInfoForm();
         }
         function showAstrologicalInfoForm() {
-            addMsg('診断に必要な情報をお聞きします。', false);
+            addMsg('占いに必要な情報をお聞きします。', false);
             const gender = formData.gender || '';
             const birth = formData.birth || {};
             const savedDate = birth.date || '';
             const savedTime = birth.time || '';
             const savedPlace = birth.place || '';
-            const savedName = formData.name || '';
 
             userState = 'astrological_info';
+
             setInputArea(`
         <div class="input-field">
             <label>お名前（ニックネーム）</label>
@@ -484,7 +545,7 @@
             <label>出生地</label>
             <input type="text" id="birthPlace" placeholder="例：札幌市" value="${savedPlace}">
         </div>
-        <button class="btn" onclick="nextStep()">次へ</button>
+        <button class="btn" onclick="onAstrologicalInfoNext()">次へ</button>
     `);
             flatpickr("#birthDate", {
                 locale: "ja",
@@ -497,6 +558,28 @@
                 dateFormat: "H:i",
                 time_24hr: true
             });
+        }
+        function onAstrologicalInfoNext() {
+            const date = document.getElementById('birthDate').value;
+            const time = document.getElementById('birthTime').value;
+            const place = document.getElementById('birthPlace').value;
+
+            if (!date) {
+                addMsg('生年月日は必ず入力してください。', false);
+                return;
+            }
+
+            formData.birth = { date, time, place };
+
+            addMsg('わかりました。この情報で星を見ていきますね。', true);
+
+            // もし「今日の運勢」から来ていたなら、そこに戻す
+            if (selectedMode === 'today_ai') {
+                stepTodayFortune();
+            } else {
+                // 通常フローの場合は、元の流れへ
+                stepConcerns(); // あるいは stepDivinationIntro() など
+            }
         }
         function selectGender(gender, el) {
             formData.gender = gender;
