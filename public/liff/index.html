@@ -496,12 +496,15 @@
         }
         function showAstrologicalInfoForm() {
             addMsg('診断に必要な情報をお聞きします。', false);
+
             const gender = formData.gender || '';
             const birth = formData.birth || {};
-            const savedName = formData.name || '';
             const savedDate = birth.date || '';
             const savedTime = birth.time || '';
             const savedPlace = birth.place || '';
+
+            // ★ 追加：名前の既存値（なければ空文字）
+            const savedName = formData.name || '';
 
             userState = 'astrological_info';
 
@@ -532,6 +535,7 @@
         </div>
         <button class="btn" onclick="nextStep()">次へ</button>
     `);
+
             flatpickr("#birthDate", {
                 locale: "ja",
                 dateFormat: "Y-m-d",
