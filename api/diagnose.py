@@ -150,6 +150,7 @@ def build_bracelet():
         design_style = data.get("design_style")
 
         bracelet_type = data.get("bracelet_type") or "element_top_only"
+        # 2. ブレスレットデザイン生成
         # stones_for_user は「エレメント石」の候補（今は1個だけ）
         bracelet_design = build_bracelet_design(
             stones_for_user,
@@ -161,12 +162,7 @@ def build_bracelet():
         stones = bracelet_design["stones"]
         design_text = bracelet_design["design_text"]
 
-        # 2. ブレスレットデザイン生成
-        bracelet_design = build_bracelet_design(
-            stones_for_user, wrist_inner_cm, bead_size_mm, design_style
-        )
-        stones = bracelet_design["stones"]
-        design_text = bracelet_design["design_text"]
+
 
         # 3. 「あなたを導く石たち」というカスタム注文内容を生成
         order_summary = generate_stone_summary(

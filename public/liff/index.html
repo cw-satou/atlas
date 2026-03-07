@@ -782,9 +782,9 @@
                             "実際に石を身につけると、ふと目に入るたびに「今日の自分の軸」を思い出しやすくなります。",
                             "",
                             "ここから先は、",
-                            "・今のあなたの手首サイズに合わせて",
-                            "・今回選ばれた石たちを中心に",
-                            "・普段の服装やシーンにもなじむように",
+                            "「今のあなたの手首サイズに合わせて」",
+                            "「今回選ばれた石たちを中心に」",
+                            "「普段の服装やシーンにもなじむように」",
                             "あなたのブレスレットにデザインしていくステップです。"
                         ].join("\n"),
                         false
@@ -877,18 +877,36 @@
 
         function stepBraceletSize() {
             addMsg(
-                "ブレスレットのサイズと、石の配置のイメージを決めていきましょう。普段の服装や、着けたいシーンをなんとなく思い浮かべながら選んでみてください。",
+                "ブレスレットのサイズとタイプを決めていきましょう。普段の服装や、着けたいシーンをなんとなく思い浮かべながら選んでみてください。手首の内径は実際には買って近いものをお選びください。※サイズのお直しが発生しないようにお間違えないようにご注意ください。",
                 false
             );
 
-            const savedWrist = formData.wrist_inner_cm || 15.0;
+            const savedWrist = formData.wrist_inner_cm || 16.0;
             const savedType = formData.bracelet_type || 'birth_top_element_side';
 
             setInputArea(`
     <div class="input-field">
       <label>手首の内径（cm）</label>
-      <input type="number" id="wristInner" step="0.5" value="${savedWrist}" min="10" max="25">
-      <small style="color:#999;">手首の最も細い部分を測ってください</small>
+      <div class="btn-group">
+        <button
+          class="btn-toggle ${savedWrist === 16 ? 'active' : ''}"
+          onclick="selectWristSize(16, this)"
+        >
+          16cm
+        </button>
+        <button
+          class="btn-toggle ${savedWrist === 18 ? 'active' : ''}"
+          onclick="selectWristSize(18, this)"
+        >
+          18cm
+        </button>
+        <button
+          class="btn-toggle ${savedWrist === 20 ? 'active' : ''}"
+          onclick="selectWristSize(20, this)"
+        >
+          20cm
+        </button>
+      </div>
     </div>
 
     <div class="input-field">
@@ -898,19 +916,24 @@
           class="btn-toggle ${savedType === 'birth_top_element_side' ? 'active' : ''}"
           onclick="selectBraceletType('birth_top_element_side', this)"
         >
-          誕生石をトップにして、エレメントの石をサイドに入れる
+          誕生石をトップ、エレメントの石をサイドに
         </button>
         <button
           class="btn-toggle ${savedType === 'element_top_only' ? 'active' : ''}"
           onclick="selectBraceletType('element_top_only', this)"
         >
-          エレメントの石だけをトップに入れる（シンプル）
+          エレメントの石だけをトップに
         </button>
       </div>
     </div>
 
-    <button class="btn" onclick="buildBracelet()">✨ あなたを導くブレスレットを完成させる</button>
+    <button class="btn" onclick="buildBracelet()">✨ この条件でブレスレットを作る</button>
   `);
+        }
+        function selectWristSize(size, el) {
+            formData.wrist_inner_cm = size;
+            el.parentElement.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
         }
         function selectBraceletType(type, el) {
             formData.bracelet_type = type;
@@ -924,13 +947,12 @@
             el.classList.add('active');
         }
         async function buildBracelet() {
-            const wrist = parseFloat(document.getElementById('wristInner')?.value || 15.0);
+            const wrist = formData.wrist_inner_cm || 16.0;
             const designStyle = formData.bracelet_type || 'birth_top_element_side';
 
-            formData.wrist_inner_cm = wrist;
-
             addMsg(`手首内径: ${wrist}cm / タイプ: ${designStyle}`, true);
-            saveProfileToLocalStorage()
+            saveProfileToLocalStorage();
+
             setInputArea(`
     <div class="loading">
       <div class="spinner"></div>
@@ -951,8 +973,7 @@
                             }
                         ],
                         wrist_inner_cm: wrist,
-                        // bead_size_mm は今後固定値にするならここで決め打ちでもOK
-                        design_style: designStyle
+                        bracelet_type: designStyle
                     })
                 });
                 const json = await res.json();
