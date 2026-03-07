@@ -600,19 +600,22 @@
         }
 
         async function executeDiagnose() {
-            const problem = document.getElementById('problemText')?.value || '';
-            formData.problem = problem;
+
+            let problem = document.getElementById('problemText')?.value || '';
             const date = formData.birth?.date;
+
             if (!problem) {
                 problem = "具体的なご相談内容は書かれていないため、今のあなた全体の流れや、これから大切にしたいテーマがわかるような全体運を中心に読み解いてください。";
             }
             formData.problem = problem;
 
-            formData.problem = problem;
             if (!date) {
                 addMsg('生年月日は必須です', false);
                 return;
             }
+
+            // 以下 fetch 部分はそのまま
+
             console.log('Executing diagnose with formData:', formData);
             setInputArea(`
                 <div class="loading">
