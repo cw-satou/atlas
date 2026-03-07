@@ -600,7 +600,6 @@
         }
 
         async function executeDiagnose() {
-
             let problem = document.getElementById('problemText')?.value || '';
             const date = formData.birth?.date;
 
@@ -614,15 +613,29 @@
                 return;
             }
 
-            // 以下 fetch 部分はそのまま
+            // ① ここで「悩みの確認＋診断開始メッセージ」を出す
+            const confirmText = [
+                "あなたの今のお悩みは、こんな感じですね。",
+                "",
+                `「${problem}」`,
+                "",
+                "この内容で星と石の流れを読み解いていきます。少しだけお待ちくださいね。"
+            ].join("\n");
 
-            console.log('Executing diagnose with formData:', formData);
+            // ユーザーの入力を一度そのままチャットに出したいなら、こちらもお好みで
+            // addMsg(problem, true);
+
+            await addMsg(confirmText, false);
+
+            // ② ローディング表示
             setInputArea(`
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>星の配置を読み解いています... 🌌</p>
-                </div>
-            `);
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>星の配置を読み解いています... 🌌</p>
+        </div>
+    `);
+
+            // ③ ここから先は今まで通り診断API呼び出し
             try {
                 const res = await fetch(`/api/diagnose`, {
                     method: 'POST',
@@ -643,6 +656,7 @@
                 clearInputArea();
             }
         }
+
 
         function displayDivinationResult(result) {
             clearInputArea();
@@ -708,13 +722,13 @@
 
             function typeIntoElement(element, rawText, speed = 20) {
                 return new Promise((resolve) => {
-                    const text = formatText(rawText);
+                    const html = formatText(rawText);
                     let i = 0;
                     element.innerHTML = '';
 
                     function step() {
-                        if (i < text.length) {
-                            element.innerHTML += text[i];
+                        if (i < html.length) {
+                            element.innerHTML = html.slice(0, i + 1);
                             i++;
                             scrollChatToBottom();
                             setTimeout(step, speed);
@@ -725,6 +739,7 @@
                     step();
                 });
             }
+
 
             async function showCurrentSection() {
                 if (currentIndex >= sections.length) {
@@ -1018,12 +1033,13 @@
         }
         function typeText(element, text, speed = 40) {
             return new Promise((resolve) => {
+                const html = formatText(text); // **〜** を <strong>〜</strong> に変換
                 let i = 0;
-                element.textContent = '';
+                element.innerHTML = '';
 
                 function type() {
-                    if (i < text.length) {
-                        element.textContent += text[i];
+                    if (i < html.length) {
+                        element.innerHTML = html.slice(0, i + 1);
                         i++;
                         scrollChatToBottom();
                         setTimeout(type, speed);
@@ -1034,6 +1050,7 @@
                 type();
             });
         }
+
         function getCookie(name) {
             const value = `; ${document.cookie}`;
             const parts = value.split(`; ${name}=`);
