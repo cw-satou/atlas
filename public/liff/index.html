@@ -680,37 +680,48 @@
             }
         }
         function stepBraceletSize() {
-            addMsg("ブレスレットのサイズや雰囲気を決めていきましょう。普段の服装や、着けたいシーンをなんとなく思い浮かべながら選んでみてください。", false);
+            addMsg(
+                "ブレスレットのサイズと、石の配置のイメージを決めていきましょう。普段の服装や、着けたいシーンをなんとなく思い浮かべながら選んでみてください。",
+                false
+            );
 
             const savedWrist = formData.wrist_inner_cm || 15.0;
-            const savedBead = formData.bead_size_mm || 8;
+            const savedType = formData.bracelet_type || 'birth_top_element_side';
+
             setInputArea(`
-                <div class="input-field">
-                    <label>手首の内径（cm）</label>
-                    <input type="number" id="wristInner" step="0.5" value="${savedWrist}" min="10" max="25">
-                    <small style="color:#999;">手首の最も細い部分を測ってください</small>
-                </div>
-                <div class="input-field">
-                    <label>石の大きさ（mm）</label>
-                    <select id="beadSize">
-                        <option value="6" ${savedBead == 6 ? 'selected' : ''}>6mm（細めで華奢）</option>
-                        <option value="8" ${savedBead == 8 ? 'selected' : ''}>8mm（標準）</option>
-                        <option value="10" ${savedBead == 10 ? 'selected' : ''}>10mm（太めで存在感）</option>
-                        <option value="12" ${savedBead == 12 ? 'selected' : ''}>12mm（ボリューム重視）</option>
-                    </select>
-                </div>
-                <div class="input-field">
-                    <label>ブレスレットのタイプ</label>
-                    <div class="btn-group">
-                        <button class="btn-toggle active" onclick="selectDesign('おまかせ', this)">おまかせ</button>
-                        <button class="btn-toggle" onclick="selectDesign('単色（シンプル）', this)">一色</button>
-                        <button class="btn-toggle" onclick="selectDesign('２色（混合）', this)">二色</button>
-                        <button class="btn-toggle" onclick="selectDesign('トップを入れる', this)">トップ</button>
-                    </div>
-                </div>
-                <button class="btn" onclick="buildBracelet()">✨ あなたを導くブレスレットを完成させる</button>
-            `);
+    <div class="input-field">
+      <label>手首の内径（cm）</label>
+      <input type="number" id="wristInner" step="0.5" value="${savedWrist}" min="10" max="25">
+      <small style="color:#999;">手首の最も細い部分を測ってください</small>
+    </div>
+
+    <div class="input-field">
+      <label>ブレスレットのタイプ</label>
+      <div class="btn-group">
+        <button
+          class="btn-toggle ${savedType === 'birth_top_element_side' ? 'active' : ''}"
+          onclick="selectBraceletType('birth_top_element_side', this)"
+        >
+          誕生石をトップにして、エレメントの石をサイドに入れる
+        </button>
+        <button
+          class="btn-toggle ${savedType === 'element_top_only' ? 'active' : ''}"
+          onclick="selectBraceletType('element_top_only', this)"
+        >
+          エレメントの石だけをトップに入れる（シンプル）
+        </button>
+      </div>
+    </div>
+
+    <button class="btn" onclick="buildBracelet()">✨ あなたを導くブレスレットを完成させる</button>
+  `);
         }
+        function selectBraceletType(type, el) {
+            formData.bracelet_type = type;
+            el.parentElement.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+        }
+
         function selectDesign(style, el) {
             formData.design_style = style;
             document.querySelectorAll('.input-field:last-child .btn-group .btn-toggle').forEach(b => b.classList.remove('active'));
@@ -718,17 +729,19 @@
         }
         async function buildBracelet() {
             const wrist = parseFloat(document.getElementById('wristInner')?.value || 15.0);
-            const beadSize = parseInt(document.getElementById('beadSize')?.value || 8);
-            const designStyle = formData.design_style || 'おまかせ';
+            const designStyle = formData.bracelet_type || 'birth_top_element_side';
+
             formData.wrist_inner_cm = wrist;
-            formData.bead_size_mm = beadSize;
-            addMsg(`手首内径: ${wrist}cm / 石サイズ: ${beadSize}mm / タイプ: ${designStyle}`, true);
+
+            addMsg(`手首内径: ${wrist}cm / タイプ: ${designStyle}`, true);
+
             setInputArea(`
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>ブレスレットをデザインしています... 💎</p>
-                </div>
-            `);
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>ブレスレットをデザインしています... 💎</p>
+    </div>
+  `);
+
             try {
                 const res = await fetch(`/api/build-bracelet`, {
                     method: 'POST',
@@ -742,7 +755,7 @@
                             }
                         ],
                         wrist_inner_cm: wrist,
-                        bead_size_mm: beadSize,
+                        // bead_size_mm は今後固定値にするならここで決め打ちでもOK
                         design_style: designStyle
                     })
                 });
@@ -758,6 +771,7 @@
                 clearInputArea();
             }
         }
+
         function displayBraceletResult(data) {
             clearInputArea();
             const section = document.createElement('div');
@@ -792,35 +806,19 @@
         function restartFromBeginning() {
             const box = document.getElementById('chatBox');
             box.innerHTML = '';
-            addMsg(getGreetingMessage(), false); // キュー経由でタイプライター
+            addMsg(getGreetingMessage(), false);
+
             const saved = localStorage.getItem('hoshin-profile');
-            console.log('Loaded from storage:', saved);
             if (saved) {
                 formData = JSON.parse(saved);
                 console.log('Parsed formData:', formData);
-                askReuseProfile();
             } else {
-                stepModeSelect();
+                formData = {};
             }
+            stepModeSelect();
         }
 
-        function askReuseProfile() {
-            const birth = formData.birth || {};
-            const summary = [
-                `性別：${formData.gender || '未設定'}`,
-                `生年月日：${birth.date || '未設定'}`,
-                `出生地：${birth.place || '未設定'}`,
-                `手首内径：${formData.wrist_inner_cm || 15.0}cm`,
-                `石サイズ：${formData.bead_size_mm || 8}mm`
-            ].join('\n');
-            addMsg("前回入力していただいたプロフィールが見つかりました。内容を確認して、気になる部分があれば修正してください。", false);
-            addMsg(summary, false);
 
-            setInputArea(`
-                <button class="btn" onclick="reuseProfile()">この情報を使う</button>
-                <button class="btn btn-secondary" onclick="resetProfile()">修正してから占う</button>
-            `);
-        }
         function reuseProfile() {
             console.log('Reusing profile with formData:', formData);
             stepModeSelect();
@@ -833,11 +831,22 @@
             stepModeSelect();
         }
 
+        function saveProfileToLocalStorage() {
+            const profile = {
+                gender: formData.gender,
+                birth: formData.birth,
+                wrist_inner_cm: formData.wrist_inner_cm,
+                bead_size_mm: formData.bead_size_mm,
+                bracelet_type: formData.bracelet_type,
+            };
+            localStorage.setItem('hoshin-profile', JSON.stringify(profile));
+        }
         function nextStep() {
             if (userState === 'astrological_info') {
                 const date = document.getElementById('birthDate')?.value;
                 const time = document.getElementById('birthTime')?.value || '';
                 const place = document.getElementById('birthPlace')?.value || '';
+
                 if (!formData.gender) {
                     addMsg('性別を選んでください', false);
                     return;
@@ -846,10 +855,17 @@
                     addMsg('生年月日は必須です', false);
                     return;
                 }
+
                 formData.birth = { date, time, place };
                 console.log('Saved astrological info:', formData.birth);
+
+                // 性別＋生年月日＋出生時間＋出生地 が揃った時点でまとめて保存
+                saveProfileToLocalStorage();
+
                 stepConcerns();
-            } else if (userState === 'concerns') stepProblem();
+            } else if (userState === 'concerns') {
+                stepProblem();
+            }
         }
         function scrollChatToBottom() {
             const box = document.getElementById('chatBox');
@@ -875,24 +891,21 @@
             });
         }
 
-
         window.onload = async function () {
             const saved = localStorage.getItem('hoshin-profile');
             const box = document.getElementById('chatBox');
 
             box.innerHTML = '';
-            await addMsg(getGreetingMessage(), false);  // 挨拶を打ち終わるまで待つ
+            await addMsg(getGreetingMessage(), false);  // 挨拶をタイプライター
 
             if (saved) {
-                formData = JSON.parse(saved);
+                formData = JSON.parse(saved); // 前回プロフィールを復元
                 console.log('Initial load - formData:', formData);
-                askReuseProfile();   // ここも必要なら async/await 化できる
-            } else {
-                stepModeSelect();    // ここで上の async stepModeSelect が走る
             }
+
+            // saved の有無に関わらず普通にフロー開始
+            stepModeSelect();
         };
-
-
 
     </script>
     <script>
