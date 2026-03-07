@@ -315,10 +315,25 @@
             const box = document.getElementById('chatBox');
             const div = document.createElement('div');
             div.className = `msg ${isUser ? 'user' : 'bot'}`;
-            div.innerHTML = formatText(text);
+
+            // ユーザーのメッセージは即表示
+            if (isUser) {
+                div.innerHTML = formatText(text);
+                box.appendChild(div);
+                scrollChatToBottom();
+                return;
+            }
+
+            // botメッセージはタイプライター表示
             box.appendChild(div);
-            scrollChatToBottom();
+            const formatted = formatText(text);        // **〜** の太字変換は先にやる
+            const plain = formatted;                   // ここでそのまま使うならHTML込み
+
+            typeText(div, plain, 40, () => {
+                scrollChatToBottom();
+            });
         }
+
         function formatText(text) {
             return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         }
@@ -789,6 +804,24 @@
             if (!box) return;
             box.scrollTop = box.scrollHeight;
         }
+        function typeText(element, text, speed = 40, callback) {
+            let i = 0;
+            element.innerHTML = '';  // 最初は空にする
+
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text[i];
+                    i++;
+                    // 途中でスクロールも追従させる
+                    scrollChatToBottom && scrollChatToBottom();
+                    setTimeout(type, speed);
+                } else if (typeof callback === 'function') {
+                    callback();
+                }
+            }
+            type();
+        }
+
         window.onload = function () {
             const saved = localStorage.getItem('hoshin-profile');
             const box = document.getElementById('chatBox');
