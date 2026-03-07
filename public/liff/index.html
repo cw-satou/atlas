@@ -108,25 +108,25 @@
 
         /* 占いメッセージ */
         .msg.bot {
-            background: rgba(210, 221, 233, 0.9);
+            background: rgba(227, 234, 241, 0.9);
             color: #666;
             border-radius: 20px;
             border: 1px solid #8f8f8f;
             box-shadow:
-                0 0 12px rgba(80, 150, 255, 0.35),
-                0 0 1px rgba(80, 150, 255, 0.8);
+                0 0 16px 4px rgba(80, 150, 255, 0.55),
+                0 0 4px 0 rgba(80, 150, 255, 0.9);
         }
 
         /* ユーザー */
         .msg.user {
-            background: rgba(182, 201, 191, 0.9);
+            background: rgba(215, 224, 219, 0.9);
             color: #666;
             border-radius: 20px;
             align-self: flex-end;
             border: 2px solid #63946e;
             box-shadow:
-                0 0 12px rgba(120, 220, 170, 0.4),
-                0 0 1px rgba(120, 220, 170, 0.9);
+                0 0 16px 4px rgba(120, 220, 170, 0.55),
+                0 0 4px 0 rgba(120, 220, 170, 0.95);
         }
 
         /* 入力エリア */
@@ -299,6 +299,7 @@
         let formData = {};
         let divinationResult = null;
         let selectedMode = null;
+        let messageQueue = Promise.resolve();
         function getGreetingMessage() {
             const hour = new Date().getHours();
             if (hour >= 5 && hour < 11) {
@@ -312,25 +313,35 @@
             }
         }
         function addMsg(text, isUser = false) {
-            const box = document.getElementById('chatBox');
-            const div = document.createElement('div');
-            div.className = `msg ${isUser ? 'user' : 'bot'}`;
+            // キューに処理を積む
+            messageQueue = messageQueue.then(() => showMessage(text, isUser));
+            return messageQueue;
+        }
 
-            // ユーザーは今までどおり
-            if (isUser) {
-                div.innerHTML = formatText(text);
+        // 実際の描画処理
+        function showMessage(text, isUser = false) {
+            return new Promise((resolve) => {
+                const box = document.getElementById('chatBox');
+                const div = document.createElement('div');
+                div.className = `msg ${isUser ? 'user' : 'bot'}`;
                 box.appendChild(div);
-                scrollChatToBottom();
-                return;
-            }
 
-            // bot はタイプライター
-            box.appendChild(div);
-            const plain = text;  // 太字マークアップは一旦使わない想定
-            typeText(div, plain, 40, () => {
-                scrollChatToBottom();
+                // ユーザーは即表示
+                if (isUser) {
+                    div.innerHTML = formatText(text);
+                    scrollChatToBottom();
+                    resolve();
+                    return;
+                }
+
+                // botはタイプライター
+                typeText(div, text, 40).then(() => {
+                    scrollChatToBottom();
+                    resolve();
+                });
             });
         }
+
 
         function formatText(text) {
             return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -851,10 +862,10 @@
                         resolve();
                     }
                 }
-
                 type();
             });
         }
+
 
         window.onload = async function () {
             const saved = localStorage.getItem('hoshin-profile');
