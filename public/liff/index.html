@@ -217,28 +217,29 @@
         }
 
         /* 結果カード */
-        .result-section {
-            background:
-                radial-gradient(circle at 20% 30%, rgba(120, 120, 255, 0.15) 1px, transparent 1px),
-                radial-gradient(circle at 70% 60%, rgba(120, 120, 255, 0.12) 1px, transparent 1px),
-                white;
-            background-size: 200px 200px;
-            border-radius: 20px;
-            box-shadow: 0 6px 22px rgba(0, 0, 0, 0.2);
-        }
+.result-section {
+    background:
+        radial-gradient(circle at 20% 30%, rgba(120, 120, 255, 0.08) 1px, transparent 1px),
+        radial-gradient(circle at 70% 60%, rgba(120, 120, 255, 0.06) 1px, transparent 1px),
+        rgba(227, 234, 241, 0.9);  /* .msg.bot とトーンを揃える */
+    background-size: 200px 200px;
+    border-radius: 16px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);  /* 影を少し弱める */
+    padding: 14px 16px;
+}
 
-        /* タイトル */
-        .result-section h3 {
-            letter-spacing: 0.08em;
-            color: #bfaaff;
-            margin-bottom: 10px;
-        }
+.result-section h3 {
+    letter-spacing: 0.08em;
+    color: #bfaaff;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
 
-        .result-section p {
-            font-size: 14px;
-            line-height: 1.8;
-            color: #ddd;
-        }
+.result-section p {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #555;  /* 読みやすいよう少し濃いめに調整も可 */
+}
 
         /* ローディング */
         .loading {
@@ -637,26 +638,33 @@
             }
         }
 
+        // 元の displayDivinationResult を、下記で置き換え
         function displayDivinationResult(result) {
             clearInputArea();
+
             const stoneName = result.stone_name ||
                 (result.stones_for_user?.[0]?.name || "あなたの石");
 
             const chatBox = document.getElementById('chatBox');
 
-            // 1. 運命の地図〜石の説明までをセクションごとに表示
+            // 共通：セクション追加用ヘルパー
             function addSection(title, text) {
                 if (!text) return;
-                const sec = document.createElement('div');
-                sec.className = 'result-section';
-                sec.style.marginTop = '12px';
-                sec.innerHTML = `
-      <h3>${title}</h3>
-      <p>${formatText(text)}</p>
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'msg bot';  // ここが重要：チャットの見た目を継承
+
+                wrapper.innerHTML = `
+      <div class="result-section">
+        <h3>${title}</h3>
+        <p>${formatText(text)}</p>
+      </div>
     `;
-                chatBox.appendChild(sec);
+
+                chatBox.appendChild(wrapper);
             }
 
+            // 1. 鑑定の本文セクションたち
             addSection('運命の地図', result.destiny_map);
             addSection('これまでの流れ', result.past);
             addSection('今のテーマ', result.present);
@@ -666,18 +674,21 @@
             addSection('石の選び方と意図', result.bracelet_proposal);
             addSection('石からのサポートメッセージ', result.stone_support_message);
 
-            // 2. 最後に「運命の石」をまとめて出すボックス
-            const finalSection = document.createElement('div');
-            finalSection.className = 'result-section';
-            finalSection.style.marginTop = '16px';
-            finalSection.innerHTML = `
-    <h3>あなたを導く運命の石</h3>
-    <p>
-      今のあなたを最も力強く導いてくれるのは――<br><br>
-      <strong style="font-size:18px;">${stoneName}</strong>
-    </p>
+            // 2. 最後に「あなたを導く運命の石」
+            const finalWrapper = document.createElement('div');
+            finalWrapper.className = 'msg bot';
+
+            finalWrapper.innerHTML = `
+    <div class="result-section">
+      <h3>あなたを導く運命の石</h3>
+      <p>
+        今のあなたを最も力強く導いてくれるのは――<br><br>
+        <strong style="font-size:18px;">${stoneName}</strong>
+      </p>
+    </div>
   `;
-            chatBox.appendChild(finalSection);
+
+            chatBox.appendChild(finalWrapper);
 
             scrollChatToBottom();
 
@@ -686,6 +697,7 @@
     <button class="btn btn-secondary" onclick="restartFromBeginning()">🔄 もう一度占う</button>
   `);
         }
+
 
 
 
