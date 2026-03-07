@@ -357,7 +357,16 @@
 
 
         function formatText(text) {
-            return text||'';
+            if (!text) return '';
+
+            // 1段階だけ HTML エスケープを戻す
+            const decoded = text
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&');
+
+            // もしまだ ** ... ** が使われているケースも残したいなら、ここで変換
+            return decoded.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         }
         function setInputArea(html) {
             document.getElementById('inputArea').innerHTML = html;
