@@ -329,9 +329,7 @@
 
         function stepDivinationIntro() {
             addMsg('あなたについて、悩みや夢を教えてください。その情報から、あなたにぴったりの石の魔法を導き出します。', false);
-            setInputArea(`
-                <button class="btn" onclick="stepAstrologicalInfo()">進める</button>
-            `);
+            showAstrologicalInfoForm();
         }
 
         function stepAstrologicalInfo() {
@@ -429,7 +427,7 @@
 
         function selectStoneMethod(method, el) {
             formData.stone_method = method;
-            document.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+            el.parentElement.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
         }
 
@@ -459,7 +457,7 @@
 
         function selectStoneOption(option, el) {
             formData.stone_option = option;
-            document.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+            el.parentElement.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
         }
 
@@ -537,7 +535,10 @@
         async function executeDiagnose() {
             const problem = document.getElementById('problemText')?.value || '';
             formData.problem = problem;
-            addMsg(problem || '（記述なし）', true);
+            if (!problem.trim()) {
+                addMsg('悩みを少し教えてください。', false);
+                return;
+            }
 
             const date = formData.birth?.date;
             if (!date) {
@@ -555,7 +556,7 @@
             `);
 
             try {
-                const res = await fetch(`${API_BASE}/diagnose`, {
+                const res = await fetch(`/api/diagnose`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)
@@ -569,10 +570,10 @@
                     return;
                 }
 
-                divinationResult = json.result;
+                divinationResult = json;
                 window.diagnosisId = json.diagnosis_id;
 
-                displayDivinationResult(json.result);
+                displayDivinationResult(json);
 
             } catch (err) {
                 addMsg('通信エラーが発生しました', false);
@@ -589,23 +590,22 @@
             const section = document.createElement('div');
             section.className = 'result-section';
             section.innerHTML = `
-        <h3>あなたの羅針盤</h3>
-        <p>
-        今のあなたに必要なのは――<br><br>
-        <strong style="font-size:18px;">${stoneName}</strong>
-        </p>
-        <p style="margin-top:10px;">
-        あなたはもう、答えを知っています。
-        </p>
-    `;
+            <h3>あなたの羅針盤</h3>
+            <p>
+            今のあなたに必要なのは――<br><br>
+            <strong style="font-size:18px;">${stoneName}</strong>
+            </p>
+            <p style="margin-top:10px;">
+            あなたはもう、答えを知っています。
+            </p>
+            `;
+
             document.getElementById('chatBox').appendChild(section);
 
-            addMsg("詳しい鑑定結果と、あなた専用のタロットカードを見るにはLINEへ進んでください。", false);
-
             setInputArea(`
-        <button class="btn" onclick="goToLine()">📱 LINEで詳細を見る</button>
-        <button class="btn btn-secondary" onclick="restartFromBeginning()">🔄 もう一度占う</button>
-    `);
+                <button class="btn" onclick="stepOrderChoice()">💎 ブレスレットを作る</button>
+                <button class="btn btn-secondary" onclick="restartFromBeginning()">🔄 もう一度占う</button>
+            `);
         }
         function stepOrderChoice() {
             addMsg('この石をどのように手に入れますか？', false);
@@ -687,12 +687,17 @@
             `);
 
             try {
-                const res = await fetch(`${API_BASE}/build-bracelet`, {
+                const res = await fetch(`/api/build-bracelet`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         diagnosis_id: window.diagnosisId,
-                        stones_for_user: divinationResult.stones_for_user || [],
+                        stones_for_user: divinationResult.stones_for_user || [
+                            {
+                                name: divinationResult.stone_name,
+                                reason: "診断結果で選ばれた石"
+                            }
+                        ],
                         wrist_inner_cm: wrist,
                         bead_size_mm: beadSize,
                         design_style: designStyle
@@ -743,7 +748,7 @@
                 bead_size_mm: formData.bead_size_mm
             };
             console.log('Saving profile:', savedProfile);
-            localStorage.setItem('hoshin-proifle', JSON.stringify(savedProfile));
+            localStorage.setItem('hoshin-profile', JSON.stringify(savedProfile));
 
             setInputArea(`
                 <button class="btn" onclick="confirmOrder()">📱 LINEでオーダーする</button>
@@ -752,9 +757,7 @@
         }
 
         function confirmOrder() {
-            addMsg('ありがとうございます！オーダー情報を送信しました。', false);
-            clearInputArea();
-            addMsg('メールで確認が来ます。お待ちください ✨', false);
+            window.location.href = "https://line.me/R/ti/p/あなたのID";
         }
 
         function restartFromBeginning() {
@@ -762,7 +765,7 @@
             const greeting = getGreetingMessage();
             document.getElementById('chatBox').innerHTML = `<div class="msg bot">${greeting}</div>`;
 
-            const saved = localStorage.getItem('hoshin-proifle');
+            const saved = localStorage.getItem('hoshin-profile');
             console.log('Loaded from storage:', saved);
             if (saved) {
                 formData = JSON.parse(saved);
@@ -825,7 +828,7 @@
         }
 
         window.onload = function () {
-            const saved = localStorage.getItem('hoshin-proifle');
+            const saved = localStorage.getItem('hoshin-profile');
             const box = document.getElementById('chatBox');
             box.innerHTML = `<div class="msg bot">${getGreetingMessage()}</div>`;
 

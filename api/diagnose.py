@@ -16,7 +16,7 @@ def diagnose():
     """
     start_time = time.time()
     print("--- Diagnose Request Started (Phase 1: Free Version) ---")
-    
+
     try:
         data = request.get_json(force=True, silent=True)
         if not data:
@@ -118,17 +118,19 @@ def build_bracelet():
     """
     start_time = time.time()
     print("--- Build Bracelet Request Started (Phase 2: Size & Design) ---")
-    
+
     try:
         # 1. リクエストボディの取得
         data = request.get_json(force=True, silent=True) or {}
-        
+
         print(f"Received bracelet data: {data}")
-        
+
         # 2. パラメータ取得
         diagnosis_id = data.get("diagnosis_id", str(uuid.uuid4())[:8])
-        stones_for_user = data.get("stones_for_user", [])
-        
+        stones_for_user = result.get("stones_for_user") or [
+            {"name": "水晶", "reason": "AIが石を返さなかったためデフォルト"}
+        ]
+
         try:
             wrist_inner_cm = float(data.get("wrist_inner_cm") or 15.0)
             bead_size_mm = int(data.get("bead_size_mm") or 8)
@@ -136,21 +138,23 @@ def build_bracelet():
             print(f"Value Error in dimensions: {ve}")
             wrist_inner_cm = 15.0
             bead_size_mm = 8
-        
+
         design_style = data.get("design_style", "おまかせ")  # デザインスタイル
-        
+
         # 3. ブレスレットデザイン生成
-        bracelet_design = build_bracelet_design(stones_for_user, wrist_inner_cm, bead_size_mm, design_style)
+        bracelet_design = build_bracelet_design(
+            stones_for_user, wrist_inner_cm, bead_size_mm, design_style)
         stones = bracelet_design["stones"]
         design_text = bracelet_design["design_text"]
-        
+
         # 4. 「あなたを導く石たち」というカスタム注文内容を生成
-        order_summary = generate_stone_summary(stones, wrist_inner_cm, bead_size_mm, design_style)
-        
+        order_summary = generate_stone_summary(
+            stones, wrist_inner_cm, bead_size_mm, design_style)
+
         # 処理時間の計測ログ
         elapsed_time = time.time() - start_time
         print(f"Build bracelet finished in {elapsed_time:.2f} seconds.")
-        
+
         # 5. 成功レスポンス
         response_data = {
             "diagnosis_id": diagnosis_id,
@@ -162,9 +166,9 @@ def build_bracelet():
             "bead_size_mm": bead_size_mm,
             "design_style": design_style
         }
-        
+
         return jsonify(response_data)
-        
+
     except Exception as e:
         print(f"Bracelet Build Error: {str(e)}")
         traceback.print_exc()
@@ -190,17 +194,18 @@ def build_bracelet_design(stones_for_user: list, wrist_inner_cm: float, bead_siz
             "design_concept": "未指定",
             "design_text": "石の候補が取得できませんでした。"
         }
-    
+
     # 1番・2番の石だけを使う
     main = stones_for_user[0]  # 一番おすすめ
-    second = stones_for_user[1] if len(stones_for_user) > 1 else stones_for_user[0]  # 二番目（なければ同じ）
-    
+    second = stones_for_user[1] if len(
+        stones_for_user) > 1 else stones_for_user[0]  # 二番目（なければ同じ）
+
     # 必要な粒数をざっくり計算（ゴムの余裕を含む）
     bracelet_length_mm = wrist_inner_cm * 10 + 10
     total_bead_count = max(12, int(bracelet_length_mm / bead_size_mm))
-    
+
     stones = []
-    
+
     # デザインスタイルに応じた配置
     if design_style == "単色（シンプル）":
         # 1色：一番おすすめの石だけ
@@ -210,12 +215,12 @@ def build_bracelet_design(stones_for_user: list, wrist_inner_cm: float, bead_siz
             "count": total_bead_count,
             "position": "top"
         })
-    
+
     elif design_style == "２色（混合）":
         # 2色：1番と2番の石を同じサイズで、6:4 くらいの配分
         main_count = int(total_bead_count * 0.6)
         second_count = total_bead_count - main_count
-        
+
         stones.append({
             "name": main["name"],
             "reason": main["reason"],
@@ -228,11 +233,11 @@ def build_bracelet_design(stones_for_user: list, wrist_inner_cm: float, bead_siz
             "count": second_count,
             "position": "side"
         })
-    
+
     elif design_style == "トップを入れる":
         # トップ：1番の石を1粒だけトップに、2番目の石を周りに敷き詰める
         surrounding_count = max(11, total_bead_count - 1)
-        
+
         stones.append({
             "name": main["name"],
             "reason": main["reason"],
@@ -245,12 +250,12 @@ def build_bracelet_design(stones_for_user: list, wrist_inner_cm: float, bead_siz
             "count": surrounding_count,
             "position": "top"      # 周囲を埋める石
         })
-    
+
     else:  # おまかせ
         # デフォルトはバランス型：1番と2番を 5:5 くらい
         main_count = total_bead_count // 2
         second_count = total_bead_count - main_count
-        
+
         stones.append({
             "name": main["name"],
             "reason": main["reason"],
@@ -263,11 +268,12 @@ def build_bracelet_design(stones_for_user: list, wrist_inner_cm: float, bead_siz
             "count": second_count,
             "position": "side"
         })
-    
+
     design_concept = f"「{main['name']}」と「{second['name']}」で仕上げるブレス（デザイン：{design_style}）"
-    
-    design_text = generate_design_text(main, second, stones, design_style, wrist_inner_cm, bead_size_mm)
-    
+
+    design_text = generate_design_text(
+        main, second, stones, design_style, wrist_inner_cm, bead_size_mm)
+
     return {
         "stones": stones,
         "design_concept": design_concept,
@@ -281,7 +287,7 @@ def generate_design_text(main_stone: dict, second_stone: dict, stones: list, des
     3段落＋小見出し付きのデザイン説明を生成（約3倍のボリューム）
     """
     stone_list = "、".join([s["name"] for s in stones[:3]])
-    
+
     part1 = f"""
 デザインコンセプト
 
@@ -289,7 +295,7 @@ def generate_design_text(main_stone: dict, second_stone: dict, stones: list, des
 
 このメインストーンを中心に据えることで、日常的にあなたのエネルギーを整え、願いを現実へ導くサポートをしてくれます。毎日身に付けることで、石からのメッセージが無意識のうちにあなたの行動や選択に影響を与え、より良い方向へ導いてくれるでしょう。
 """
-    
+
     part2 = f"""
 サポートストーンの役割
 
@@ -297,7 +303,7 @@ def generate_design_text(main_stone: dict, second_stone: dict, stones: list, des
 
 複数の石を組み合わせることで、単体の石よりも何倍もの相乗効果が生まれます。各石のエネルギーが調和することで、より深い癒しと導きを体験することができるようになります。
 """
-    
+
     part3 = f"""
 日常での使い方と効果
 
@@ -305,7 +311,7 @@ def generate_design_text(main_stone: dict, second_stone: dict, stones: list, des
 
 デザインスタイル「**{design_style}**」で仕上げたこのブレスレットは、{get_style_description(design_style)}という特徴があります。見た目の美しさと、石からの力強いサポートを兼ね備えた、あなただけの運命を変えるお守りとなるでしょう。
 """
-    
+
     return part1 + part2 + part3
 
 
@@ -336,11 +342,11 @@ def generate_stone_summary(stones: list, wrist_inner_cm: float, bead_size_mm: in
 
 ■ 使用する石と個数
 """
-    
+
     for stone in stones:
         summary += f"  • {stone['name']}：{stone['count']}個（{stone['position']}）\n"
-    
+
     total_beads = sum(s['count'] for s in stones)
     summary += f"\n■ ビーズ総数：{total_beads}個\n"
-    
+
     return summary
