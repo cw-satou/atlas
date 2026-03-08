@@ -1292,13 +1292,13 @@
                 false
             );
 
-            // ★ 診断中の画面を表示
+            // 診断中の画面を表示
             setInputArea(`
-      <div class="loading">
-        <div class="spinner"></div>
-        <p>今日の運勢を読み解いています... 🔮</p>
-      </div>
-    `);
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>今日の運勢を読み解いています... 🔮</p>
+    </div>
+  `);
 
             try {
                 const res = await fetch('/api/today-fortune', {
@@ -1309,14 +1309,29 @@
                         birth: birth
                     })
                 });
-                const json = await res.json();
-                const text = json.message || '今日は、自分のペースを大切に過ごすと良さそうな日です。';
 
-                // ★ 診断完了したので入力エリアを一旦クリア
+                const json = await res.json();  // ★ ここだけでOK
+
+                // APIエラー時の扱い
+                if (json.error) {
+                    clearInputArea();
+                    await addMsg(`エラーが発生しました: ${json.error}`, false);
+                    setInputArea(`
+        <button class="btn btn-secondary" onclick="restartFromBeginning()">
+          🔄 最初に戻る
+        </button>
+      `);
+                    return;
+                }
+
+                // メッセージ抽出（JSONなら鑑定結果だけ取り出す）
+                const rawMessage =
+                    json.message ||
+                    '今日は、自分のペースを大切に過ごすと良さそうな日です。';
+                const fortuneText = extractFortuneFromMessage(rawMessage);
+
+                // 診断完了 → 入力エリアクリア
                 clearInputArea();
-
-                const data = await res.json();
-                const fortuneText = extractFortuneFromMessage(data.message);
 
                 await addMsg(`【今日の運勢】\n${fortuneText}`, false);
 
@@ -1326,13 +1341,13 @@
                 );
 
                 setInputArea(`
-          <button class="btn" onclick="selectMode('divination')">
-            💎 導きの天然石を診断する
-          </button>
-          <button class="btn btn-secondary" onclick="restartFromBeginning()">
-            🔄 最初に戻る
-          </button>
-        `);
+      <button class="btn" onclick="selectMode('divination')">
+        💎 導きの天然石を診断する
+      </button>
+      <button class="btn btn-secondary" onclick="restartFromBeginning()">
+        🔄 最初に戻る
+      </button>
+    `);
             } catch (e) {
                 clearInputArea();
                 await addMsg(
@@ -1340,8 +1355,8 @@
                     false
                 );
                 setInputArea(`
-          <button class="btn" onclick="restartFromBeginning()">🔄 最初に戻る</button>
-        `);
+      <button class="btn" onclick="restartFromBeginning()">🔄 最初に戻る</button>
+    `);
             }
         }
         function extractFortuneFromMessage(raw) {
