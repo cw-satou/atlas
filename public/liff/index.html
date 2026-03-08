@@ -67,12 +67,10 @@
             background: #013;
             backdrop-filter: blur(14px);
             border: 1px solid #e5e5e5;
-            border-radius: 20px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
             display: flex;
             flex-direction: column;
             height: 100vh;
-            border-radius: 22px;
             overflow: hidden;
         }
 
@@ -158,7 +156,7 @@
         .input-field select {
             width: 100%;
             padding: 10px;
-            border-radius: 8px;
+            border-radius: 4px;
             background: #fff;
             border: 1px solid #ddd;
             color: #333;
@@ -593,7 +591,14 @@
         }
         function showStoneOptions() {
             const method = formData.stone_method || 'color';
-            addMsg(method, true);
+            const methodLabelMap = {
+                color: '色',
+                effect: '効果',
+                zodiac: '星座',
+                moon: '誕生月'
+            };
+            const methodLabel = methodLabelMap[method] || '';
+            addMsg(methodLabel, true);
             let options = [];
             if (method === 'color') {
                 options = ['紫', 'ピンク', '黄', '透明', '黒', '水色', '紺', '茶金', '白', '赤'];
@@ -604,7 +609,7 @@
             } else {
                 options = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
             }
-            addMsg(`${method}を選んでください`, false);
+            addMsg(`${methodLabel}を選んでください`, false);
             let html = '<div class="btn-group">';
             options.forEach(opt => {
                 html += `<button class="btn-toggle" onclick="selectStoneOption('${opt}', this)">${opt}</button>`;
