@@ -1284,81 +1284,64 @@
                 stepProblem();
             }
         }
-        async function runTodayFortune() {
-            const birth = formData.birth || {};
+        const json = await res.json();
 
+        // 1) API呼び出しレベルの失敗（HTTPステータス）
+        if (!res.ok) {
+            clearInputArea();
             await addMsg(
-                '生まれた時間と場所も含めて、AIに今日の運勢を聞いてみますね。',
+                `占いAPIでエラーが発生しました（${res.status}）`,
                 false
             );
-
-            // 診断中の画面を表示
             setInputArea(`
-    <div class="loading">
-      <div class="spinner"></div>
-      <p>今日の運勢を読み解いています... 🔮</p>
-    </div>
+    <button class="btn btn-secondary" onclick="restartFromBeginning()">
+      🔄 最初に戻る
+    </button>
   `);
-
-            try {
-                const res = await fetch('/api/today-fortune', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        gender: formData.gender,
-                        birth: birth
-                    })
-                });
-
-                const json = await res.json();  // ★ ここだけでOK
-
-                // APIエラー時の扱い
-                if (json.error) {
-                    clearInputArea();
-                    await addMsg(`エラーが発生しました: ${json.error}`, false);
-                    setInputArea(`
-        <button class="btn btn-secondary" onclick="restartFromBeginning()">
-          🔄 最初に戻る
-        </button>
-      `);
-                    return;
-                }
-
-                // メッセージ抽出（JSONなら鑑定結果だけ取り出す）
-                const rawMessage =
-                    json.message ||
-                    '今日は、自分のペースを大切に過ごすと良さそうな日です。';
-                const fortuneText = extractFortuneFromMessage(rawMessage);
-
-                // 診断完了 → 入力エリアクリア
-                clearInputArea();
-
-                await addMsg(`【今日の運勢】\n${fortuneText}`, false);
-
-                await addMsg(
-                    'この流れを踏まえて、あなたの導きの天然石を診断してみますか？',
-                    false
-                );
-
-                setInputArea(`
-      <button class="btn" onclick="selectMode('divination')">
-        💎 導きの天然石を診断する
-      </button>
-      <button class="btn btn-secondary" onclick="restartFromBeginning()">
-        🔄 最初に戻る
-      </button>
-    `);
-            } catch (e) {
-                clearInputArea();
-                await addMsg(
-                    'AIにうまくアクセスできませんでした。\n少し時間をおいてからもう一度お試しください。',
-                    false
-                );
-                setInputArea(`
-      <button class="btn" onclick="restartFromBeginning()">🔄 最初に戻る</button>
-    `);
-            }
+            return;
         }
+
+        // 2) サーバー側が error を返してきた場合
+        if (json.error) {
+            clearInputArea();
+            await addMsg(
+                `占いの処理中にエラーが発生しました:\n${json.error}`,
+                false
+            );
+            setInputArea(`
+    <button class="btn btn-secondary" onclick="restartFromBeginning()">
+      🔄 最初に戻る
+    </button>
+  `);
+            return;
+        }
+
+        // 3) 正常系：メッセージ抽出
+        const rawMessage =
+            json.message ||
+            '今日は、自分のペースを大切に過ごすと良さそうな日です。';
+
+        const fortuneText = extractFortuneFromMessage(rawMessage);
+
+        // 診断完了 → 入力エリアクリア
+        clearInputArea();
+
+        await addMsg(`【今日の運勢】\n${fortuneText}`, false);
+
+        await addMsg(
+            'この流れを踏まえて、あなたの導きの天然石を診断してみますか？',
+            false
+        );
+
+        setInputArea(`
+  <button class="btn" onclick="selectMode('divination')">
+    💎 導きの天然石を診断する
+  </button>
+  <button class="btn btn-secondary" onclick="restartFromBeginning()">
+    🔄 最初に戻る
+  </button>
+`);
+
         function extractFortuneFromMessage(raw) {
             if (!raw) return '';
 
