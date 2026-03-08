@@ -1315,7 +1315,10 @@
                 // ★ 診断完了したので入力エリアを一旦クリア
                 clearInputArea();
 
-                await addMsg(`【今日の運勢】\n${text}`, false);
+                const data = await res.json();
+                const fortuneText = extractFortuneFromMessage(data.message);
+
+                await addMsg(`【今日の運勢】\n${fortuneText}`, false);
 
                 await addMsg(
                     'この流れを踏まえて、あなたの導きの天然石を診断してみますか？',
@@ -1339,6 +1342,24 @@
                 setInputArea(`
           <button class="btn" onclick="restartFromBeginning()">🔄 最初に戻る</button>
         `);
+            }
+        }
+        function extractFortuneFromMessage(raw) {
+            if (!raw) return '';
+
+            // ```json ～ ``` を取り除く
+            const cleaned = raw
+                .replace(/```json/g, '')
+                .replace(/```/g, '')
+                .trim();
+
+            try {
+                const obj = JSON.parse(cleaned);
+                // { "鑑定結果": "..." } 想定
+                return obj.鑑定結果 || cleaned;
+            } catch (e) {
+                // JSONじゃなければそのまま返す
+                return cleaned;
             }
         }
 
