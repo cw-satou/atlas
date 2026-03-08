@@ -107,6 +107,7 @@
             box-shadow:
                 0 0 18px 4px rgba(80, 150, 255, 0.55),
                 0 0 4px 0 rgba(80, 150, 255, 0.9);
+            line-height: 1.5;
         }
 
         /* ユーザー */
@@ -328,21 +329,24 @@
                 div.className = `msg ${isUser ? 'user' : 'bot'}`;
                 box.appendChild(div);
 
-                // ユーザーは即表示
+                const formatted = formatText(
+                    text.replace(/\n\n/g, '\n<br><br>\n').replace(/\n/g, '<br>')
+                );
+
                 if (isUser) {
-                    div.innerHTML = formatText(text);
+                    div.innerHTML = formatted;
                     scrollChatToBottom();
                     resolve();
                     return;
                 }
 
-                // botはタイプライター
-                typeText(div, text, 40).then(() => {
+                typeText(div, formatted, 40).then(() => {
                     scrollChatToBottom();
                     resolve();
                 });
             });
         }
+
 
 
         function formatText(text) {
@@ -1313,7 +1317,7 @@
                 );
 
                 setInputArea(`
-          <button class="btn" onclick="startStoneDivination()">
+          <button class="btn" onclick="selectMode('divination')">
             💎 導きの天然石を診断する
           </button>
           <button class="btn btn-secondary" onclick="restartFromBeginning()">
