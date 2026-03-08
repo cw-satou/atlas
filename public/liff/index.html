@@ -336,7 +336,7 @@
                 box.appendChild(div);
 
                 const formatted = formatText(
-                    text.replace(/\n+/g, '<br>')
+                    text.replace(/\n+/g, '<br>').replace(/<br+>/g, '<br>')
                 );
 
                 if (isUser) {
