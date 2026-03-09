@@ -22,7 +22,8 @@ def diagnose(data, line_user_id=None):
         data = request.get_json(force=True, silent=True)
         if not data:
             return jsonify({"error": "Empty request body"}), 400
-
+        
+        diagnosis_id = str(uuid.uuid4())
         line_user_id = data.get("line_user_id")
 
         print(f"Received data: {data}")
