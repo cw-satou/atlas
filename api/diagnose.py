@@ -11,7 +11,7 @@ import sys
 import time
 from api.utils_perplexity import generate_today_fortune  # 新しく作る
 
-def diagnose(line_user_id=None):
+def diagnose(data, line_user_id=None):
     """
     第1フェーズ：不足エレメントと、そのエレメントを補う代表石1種類を返す
     """

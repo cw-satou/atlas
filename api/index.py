@@ -10,24 +10,30 @@ app = Flask(__name__, static_folder='public', static_url_path='')
 
 # ===== ルーティング =====
 
+
 @app.route('/api/diagnose', methods=['POST'])
 def route_diagnose():
-    return diagnose()
+    data = request.get_json(force=True, silent=True) or {}
+    line_user_id = data.get("line_user_id")
+    return diagnose(data, line_user_id)
 
 @app.route('/api/build-bracelet', methods=['POST'])
 def route_build_bracelet():
     """ブレスレット生成エンドポイント"""
     return build_bracelet()
 
+
 @app.route('/api/health', methods=['GET'])
 def health():
     """ヘルスチェック"""
     return jsonify({"status": "ok", "service": "星の羅針盤 API"})
 
+
 @app.route('/')
 def index():
     """フロントエンド提供"""
     return app.send_static_file('index.html')
+
 
 @app.route('/api/fortune-detail', methods=['POST'])
 def fortune_detail():
@@ -44,7 +50,7 @@ def fortune_detail():
 
     base_url = os.environ.get("SHOP_BASE_URL", "https://yourshop.com/product/")
     if base_url == "":
-        base_url = "https://yourshop.com/product/";
+        base_url = "https://yourshop.com/product/"
 
     # 🔥 ここが3商品化ポイント
     product_slug_top = saved.get("product_slug") or "top-crystal"
@@ -75,6 +81,7 @@ def fortune_detail():
 
     return jsonify(response)
 
+
 @app.route("/api/today-fortune", methods=["POST"])
 def today_fortune():
     """
@@ -94,13 +101,16 @@ def today_fortune():
         }), 200
 # ===== エラーハンドラー =====
 
+
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "Not found"}), 404
 
+
 @app.errorhandler(500)
 def internal_error(e):
     return jsonify({"error": "Internal server error"}), 500
+
 
 if __name__ == '__main__':
     # ローカル開発用
