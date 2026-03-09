@@ -881,7 +881,6 @@
         }
         async function displayDivinationResult(result) {
             setProgress(3, 4, "導きの石を選定");
-            await showOracleCard(result.oracle_card);
             clearInputArea();
             const nameForDisplay = getUserNameForDisplay();
             const stoneName = result.stone_name ||
@@ -894,7 +893,7 @@
                     key: 'destiny_map',
                     title: '運命の地図',
                     text: result.destiny_map,
-                    lead: `まずは、今のあなた全体のテーマや流れを地図のように見ていきますね。`
+                    lead: `まずは、あなた全体のテーマや流れを地図のように見ていきますね。`
                 },
                 {
                     key: 'past',
@@ -903,28 +902,15 @@
                     lead: `次に、あなたがこれまでどんな資質や流れを持って歩いてきたのかを読み解いていきます。`
                 },
                 {
-                    key: 'present',
-                    title: '今のテーマ',
-                    text: result.present,
-                    lead: `ここからは、まさに「今」のあなたにフォーカスして、取り組むべきテーマを見てみましょう。`
-                },
-                {
-                    key: 'future',
-                    title: 'これからの可能性',
-                    text: result.future,
-                    lead: `では、その先にどんな可能性やチャンスが開いていくのかをお伝えしますね。`
+                    key: 'present_future',
+                    title: '次に、あなたの今とこれからの流れを見ていきます。',
+                    text: result.present_future
                 },
                 {
                     key: 'element_diagnosis',
                     title: 'エレメントのバランス',
                     text: result.element_diagnosis,
                     lead: `次は、火・地・風・水のバランスから、あなたのエネルギーの癖や不足しがちな部分を見ていきます。`
-                },
-                {
-                    key: 'oracle_message',
-                    title: 'オラクルからのメッセージ',
-                    text: result.oracle_message,
-                    lead: `引いたオラクルカードが、今のあなたにどんなことを伝えたがっているのかも整理していきます。`
                 },
                 {
                     key: 'bracelet_proposal',
@@ -964,39 +950,35 @@
 
             async function showCurrentSection() {
                 // 全セクション読み終えたら → ブレスレット誘導へ
-                // 全セクション読み終えたら → ブレスレット誘導へ
                 if (currentIndex >= sections.length) {
                     await addMsg(
                         [
-                            "ここまでじっくり読んでくださって、本当にありがとうございます。",
+                            "ここまで読んでくださってありがとうございます。",
                             "",
-                            "ここに書かれたメッセージは、どれも「今のあなたのためだけ」に集まってきた言葉たちです。",
-                            "画面の向こうで静かに並んでいる石たちも、",
-                            "もしあなたが望むなら、一緒に歩き出したいとそっと手を伸ばしてくれています。"
+                            "今回のメッセージは、今のあなたの流れから集まってきたヒントです。",
+                            "",
+                            "少しでも心に残る言葉や石があったなら、",
+                            "それは今のあなたに必要なサインかもしれません。"
                         ].join("\n"),
                         false
                     );
 
                     await addMsg(
                         [
-                            "もし少しでも胸のあたりがふっと温かくなったり、",
-                            "「この感覚をちゃんと形に残しておきたい」と感じたなら、",
-                            "それは、今回のブレスレットづくりのいちばん大切なサインです。",
+                            "もしこの石たちと一緒に歩いてみたいと感じたなら、",
                             "",
-                            "もちろん、今日は読むだけにして、",
-                            "心の中だけで石たちとつながってみるのも素敵な選択です。",
-                            "ただ、今の自分をそっと支えてくれる“相棒”がほしいと感じているなら、",
-                            "この結果をもとに、あなたのための一本をデザインしていきましょう。"
+                            "今回の診断をもとに、",
+                            "あなたのためのブレスレットを形にしてみましょう。"
                         ].join("\n"),
                         false
                     );
 
                     setInputArea(`
     <button class="btn" onclick="stepOrderChoice()">
-      💎 今の自分に合わせたブレスレットのイメージを見てみる
+      💎 ブレスレットを見る
     </button>
     <button class="btn btn-secondary" onclick="restartFromBeginning()">
-      🔄 今日は読むだけにして、もう一度占ってみる
+      🔄 もう一度占ってみる
     </button>
   `);
                     return;
@@ -1004,9 +986,6 @@
 
 
                 const sec = sections[currentIndex];
-
-                await addMsg(sec.lead, false);
-
                 const wrapper = document.createElement('div');
                 wrapper.className = 'msg bot';
                 const inner = document.createElement('div');
@@ -1024,7 +1003,29 @@
                 scrollChatToBottom();
 
                 await typeIntoElement(p, sec.text, 20);
+                // エレメント診断のあとにカードを引く
+                if (sec.key === "element_diagnosis") {
 
+                    await showOracleCard(result.oracle_card);
+
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'msg bot';
+
+                    const inner = document.createElement('div');
+                    inner.className = 'result-section';
+
+                    const h3 = document.createElement('h3');
+                    h3.textContent = "オラクルからのメッセージ";
+
+                    const p2 = document.createElement('p');
+
+                    inner.appendChild(h3);
+                    inner.appendChild(p2);
+                    wrapper.appendChild(inner);
+                    chatBox.appendChild(wrapper);
+
+                    await typeIntoElement(p2, result.oracle_message, 20);
+                }
                 const isLast = (currentIndex === sections.length - 1);
                 setInputArea(`
       <button class="btn" onclick="showNextSection()">
@@ -1033,16 +1034,23 @@
     `);
             }
 
-            window.showNextSection = function () {
+            window.showNextSection = async function () {
+
                 const isLast = (currentIndex === sections.length - 1);
                 const label = isLast
                     ? '最後のメッセージまで読む'
                     : '次のメッセージを読む';
 
-                // ★ ボタン押下をユーザーメッセージとして表示
-                addMsg(label, true);
+                await addMsg(label, true);
+
+                const next = sections[currentIndex + 1];
+
+                if (next && next.lead) {
+                    await addMsg(next.lead, false);
+                }
 
                 currentIndex += 1;
+
                 showCurrentSection();
             };
 
@@ -1288,11 +1296,11 @@
                     return;
                 }
                 await addMsg(
-                    "あなたの星の流れと石の相性から、一本のブレスレットが形になりました。",
+                    "このブレスレットは、あなたの診断結果をもとにデザインされています。",
                     false
                 );
                 await addMsg(
-                    "この石たちは、今のあなたの流れを支える配置で組み上げられています。",
+                    "今のあなたの流れに合う石たちを組み合わせて、一本のブレスレットとして形にしました。",
                     false
                 );
                 displayBraceletResult(json.bracelet || json);
@@ -1326,13 +1334,14 @@ ${data.product_name}
                 html += `<p style="font-size:12px;opacity:0.7;">${data.name_en || data.bracelet_name_en}</p>`;
             }
 
-            // 画像
-            if (data.image_url) {
+            const img = data.image_url || data.image;
+            if (img) {
                 html += `
-<img 
-    src="${data.image_url}" 
-    style="width:100%;border-radius:12px;margin:12px 0;"
->`;
+        <img 
+            src="${img}" 
+            style="width:100%;border-radius:12px;margin:12px 0;"
+        >
+    `;
             }
 
             // デザイン説明
@@ -1354,6 +1363,13 @@ ${data.product_name}
             section.innerHTML = html;
 
             chatBox.appendChild(section);
+
+            const textContainer = section.querySelector("p");
+
+            if (textContainer) {
+                typeIntoElement(textContainer, textContainer.innerHTML, 20);
+            }
+
             scrollChatToBottom();
 
             // 注文ボタン

@@ -108,15 +108,53 @@ MAIN_TO_SUB_MAP = {
 }
 
 PRODUCT_MAP = {
-    ("water", "love", "f"):  {"name": "蒼海の恋", "slug": "soumi-no-koi"},
-    ("water", "heal", "f"):  {"name": "月海のやすらぎ", "slug": "tsukiumi-no-yasuragi"},
-    ("water", "action", "f"): {"name": "蒼海の勇気", "slug": "soumi-no-yuki"},
-    ("water", "intuition", "f"): {"name": "蒼海のひらめき", "slug": "soumi-no-hirameki"},
 
-    ("water", "love", "m"):  {"name": "深海の誓い", "slug": "shinkai-no-chikai"},
-    ("water", "heal", "m"):  {"name": "蒼月の静寂", "slug": "sougetsu-no-seijaku"},
-    ("water", "action", "m"): {"name": "潮流の勇気", "slug": "choryu-no-yuki"},
-    ("water", "intuition", "m"): {"name": "海風の叡智", "slug": "umikaze-no-eichi"}
+    # 水エレメント
+    ("water", "love", "seiban"): {"name": "星盤 / 蒼海の恋", "slug": "seiban-ocean-love"},
+    ("water", "heal", "seiban"): {"name": "星盤 / 月海のやすらぎ", "slug": "seiban-ocean-heal"},
+    ("water", "action", "seiban"): {"name": "星盤 / 蒼海の勇気", "slug": "seiban-ocean-courage"},
+    ("water", "intuition", "seiban"): {"name": "星盤 / 水鏡のひらめき", "slug": "seiban-ocean-insight"},
+
+    ("water", "love", "kisei"): {"name": "輝星 / 蒼海の恋", "slug": "kisei-ocean-love"},
+    ("water", "heal", "kisei"): {"name": "輝星 / 月海のやすらぎ", "slug": "kisei-ocean-heal"},
+    ("water", "action", "kisei"): {"name": "輝星 / 蒼海の勇気", "slug": "kisei-ocean-courage"},
+    ("water", "intuition", "kisei"): {"name": "輝星 / 水鏡のひらめき", "slug": "kisei-ocean-insight"},
+
+
+    # 火エレメント
+    ("fire", "love", "seiban"): {"name": "星盤 / 紅炎の恋", "slug": "seiban-flame-love"},
+    ("fire", "heal", "seiban"): {"name": "星盤 / 焔のやすらぎ", "slug": "seiban-flame-heal"},
+    ("fire", "action", "seiban"): {"name": "星盤 / 太陽の勇気", "slug": "seiban-solar-courage"},
+    ("fire", "intuition", "seiban"): {"name": "星盤 / 炎のひらめき", "slug": "seiban-flame-insight"},
+
+    ("fire", "love", "kisei"): {"name": "輝星 / 紅炎の恋", "slug": "kisei-flame-love"},
+    ("fire", "heal", "kisei"): {"name": "輝星 / 焔のやすらぎ", "slug": "kisei-flame-heal"},
+    ("fire", "action", "kisei"): {"name": "輝星 / 太陽の勇気", "slug": "kisei-solar-courage"},
+    ("fire", "intuition", "kisei"): {"name": "輝星 / 炎のひらめき", "slug": "kisei-flame-insight"},
+
+
+    # 風エレメント
+    ("wind", "love", "seiban"): {"name": "星盤 / 星風の恋", "slug": "seiban-wind-love"},
+    ("wind", "heal", "seiban"): {"name": "星盤 / 風花のやすらぎ", "slug": "seiban-wind-heal"},
+    ("wind", "action", "seiban"): {"name": "星盤 / 疾風の勇気", "slug": "seiban-wind-courage"},
+    ("wind", "intuition", "seiban"): {"name": "星盤 / 蒼空のひらめき", "slug": "seiban-wind-insight"},
+
+    ("wind", "love", "kisei"): {"name": "輝星 / 星風の恋", "slug": "kisei-wind-love"},
+    ("wind", "heal", "kisei"): {"name": "輝星 / 風花のやすらぎ", "slug": "kisei-wind-heal"},
+    ("wind", "action", "kisei"): {"name": "輝星 / 疾風の勇気", "slug": "kisei-wind-courage"},
+    ("wind", "intuition", "kisei"): {"name": "輝星 / 蒼空のひらめき", "slug": "kisei-wind-insight"},
+
+
+    # 地エレメント
+    ("earth", "love", "seiban"): {"name": "星盤 / 深森の恋", "slug": "seiban-earth-love"},
+    ("earth", "heal", "seiban"): {"name": "星盤 / 大地のやすらぎ", "slug": "seiban-earth-heal"},
+    ("earth", "action", "seiban"): {"name": "星盤 / 岩の勇気", "slug": "seiban-earth-courage"},
+    ("earth", "intuition", "seiban"): {"name": "星盤 / 森羅のひらめき", "slug": "seiban-earth-insight"},
+
+    ("earth", "love", "kisei"): {"name": "輝星 / 深森の恋", "slug": "kisei-earth-love"},
+    ("earth", "heal", "kisei"): {"name": "輝星 / 大地のやすらぎ", "slug": "kisei-earth-heal"},
+    ("earth", "action", "kisei"): {"name": "輝星 / 岩の勇気", "slug": "kisei-earth-courage"},
+    ("earth", "intuition", "kisei"): {"name": "輝星 / 森羅のひらめき", "slug": "kisei-earth-insight"}
 
 }
 STONE_SIZES = {
@@ -141,6 +179,7 @@ THEME_SUFFIX = {
     "intuition": ["のひらめき", "の導き", "の叡智"]
 }
 
+IMAGE_CACHE = {}
 
 def bracelet_length(inner_size):
     return inner_size * 10 + 10
@@ -273,33 +312,36 @@ def generate_bracelet_name_en(element, theme):
     return f"{el} {th}"
 
 
-def generate_bracelet_name_en(element, theme):
-
-    el = ELEMENT_EN.get(element, "Star")
-    th = THEME_EN.get(theme, "Light")
-
-    return f"{el} {th}"
-
-
 def generate_bracelet_image(layout):
+
+    key = "-".join(layout)
+
+    if key in IMAGE_CACHE:
+        return IMAGE_CACHE[key]
 
     stones = ", ".join(layout)
 
     prompt = f"""
-gemstone bracelet, realistic jewelry photography,
-natural crystal beads bracelet,
-layout: {stones},
-soft lighting, white background,
-high quality, product photography
+realistic gemstone bracelet jewelry photography
+beads: {stones}
+natural crystal bracelet
+studio lighting
+white background
+product photo
 """
 
-    url = (
-        "https://image.pollinations.ai/prompt/"
-        + prompt.replace(" ", "%20")
-        + "?width=600&height=400"
+    resp = client.chat.completions.create(
+        model="nanobanana2",
+        messages=[
+            {"role": "system", "content": "You generate product image prompts."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.4
     )
 
-    return url
+    image_url = resp.choices[0].message.content
+
+    return image_url
 
 
 def generate_bracelet_name(element, theme):
@@ -314,7 +356,12 @@ def generate_bracelet_name(element, theme):
 
 
 def generate_bracelet_design(result, inner_size, element="water", theme="love"):
+    series = "kisei" if result.get(
+        "bracelet_type") == "birth_top_element_side" else "seiban"
+    product = PRODUCT_MAP[(element, theme, series)]
 
+    product_name = product["name"]
+    product_slug = product["slug"]
     name = generate_bracelet_name(element, theme)
     name_en = generate_bracelet_name_en(element, theme)
 
@@ -322,9 +369,8 @@ def generate_bracelet_design(result, inner_size, element="water", theme="love"):
     sub = result["stones_sub"][0]
 
     main_name = main["name"]
-    main_size = main["size"]
-
-    sub_name = sub["name"]
+    main_size = STOCK_STONES.get(main_name, {}).get("size", 10)
+    sub_name = sub["name"] if sub else "水晶"
 
     # 8mm石の計算
     calc = calculate_8mm_with_spacers(inner_size, main_size)
@@ -347,6 +393,8 @@ def generate_bracelet_design(result, inner_size, element="water", theme="love"):
     image_data = generate_bracelet_image(layout)
 
     return {
+        "product_name": product_name,
+        "product_slug": product_slug,
         "bracelet_name": name,
         "bracelet_name_en": name_en,
         "size": inner_size,
@@ -359,39 +407,6 @@ def generate_bracelet_design(result, inner_size, element="water", theme="love"):
         "5mm_spacers": 3,
         "image": image_data
     }
-
-
-def generate_bracelet_layout(main_stone, sub_stone, beads8, spacer2):
-
-    layout = []
-
-    # 左メイン
-    layout.append(main_stone)
-    layout.append("5mmスペーサー")
-
-    sub_counter = 0
-    spacer_used = 0
-
-    for i in range(beads8):
-
-        layout.append(sub_stone)
-        sub_counter += 1
-
-        # 3個ごとに2mm
-        if sub_counter == 3 and spacer_used < spacer2:
-            layout.append("2mmスペーサー")
-            spacer_used += 1
-            sub_counter = 0
-
-    # 右メイン
-    layout.append("5mmスペーサー")
-    layout.append(main_stone)
-
-    # 結び目側
-    layout.append("5mmスペーサー")
-
-    return layout
-
 
 def count_stones(layout):
     return dict(Counter(layout))
@@ -571,20 +586,21 @@ def create_user_prompt(user_input, oracle_result):
 【出力JSONスキーマ】
 
 {{
-  "destiny_map": "全体のテーマ・運命の地図を200文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
-  "past": "生まれ持った資質・これまでの流れを150文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
-  "present": "今の課題・テーマを150文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
-  "future": "これから開いていく可能性を150文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
-  "element_diagnosis": "火・地・風・水のバランスと不足要素、アドバイスを150文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
-  "oracle_message": "引いたカード「{oracle_result['card']['name']}」の{position_str}の詳細メッセージを150文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
-  "bracelet_proposal": "どんな意図で石を選び、どんな願いをサポートするか、150文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
-  "stone_support_message": "あなたはこういう状況であなたにはこういう石の魔法のサポートが必要です、というメッセージを200文字程度で。ユーザーの具体的な悩み・状況と、その状況に対して石がどのようにサポートするのかを説明してください。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
+  "destiny_map": "全体のテーマ・運命の地図を120文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
+  "past": "生まれ持った資質・これまでの流れを80文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
+  "present_future": "今の課題・これからのテーマを120文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
+  "element_diagnosis": "火・地・風・水のバランスと不足要素、アドバイスを80文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
+  "oracle_message": "引いたカード「{oracle_result['card']['name']}」の{position_str}の詳細メッセージを100文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
+  "bracelet_proposal": "どんな意図で石を選び、どんな願いをサポートするか、80文字程度で。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
+  "stone_support_message": "あなたはこういう状況であなたにはこういう石の魔法のサポートが必要です、というメッセージを120文字程度で。ユーザーの具体的な悩み・状況と、その状況に対して石がどのようにサポートするのかを説明してください。【】見出しは絶対に使わず、自然な文章だけで書いてください。重要な言葉は**で囲んで強調。",
   "stones_for_user": [
     {{
       "name": "石の名前",
       "reason": "その石を選んだ理由（悩みとの関係を詳しく説明）"
     }}
-  ]
+  ],
+  "element": "ユーザーに必要なエレメント (water/fire/wind/earth)",
+  "theme": "テーマ (love/heal/action/intuition)"
 }}
 """
 
@@ -707,11 +723,11 @@ def generate_bracelet_reading(user_input: dict) -> dict:
                 "oracle_message": "",
                 "bracelet_proposal": "",
                 "stone_support_message": "",
-                "stones_for_user": [
-                    {
-                        "name": f"{card['name']}（紫）" if card["name"] == "アメジスト" else card["name"],
-                        "reason": "AI応答の解析に失敗したため、オラクルカードで選ばれた石を代表石として設定しました。"
-                    }
+                "stones_main":[
+                    {"name":"メイン石"}
+                ],
+                "stones_sub":[
+                    {"name":"サブ石"}
                 ],
                 # 今後 element_lack を使うならここで決めてもOK（今は空で可）
                 "element_lack": ""
@@ -726,11 +742,12 @@ def generate_bracelet_reading(user_input: dict) -> dict:
         card_image_url = f"https://image.pollinations.ai/prompt/{card_prompt.replace(' ', '%20')}?width=400&height=600&seed={random.randint(0, 9999)}"
 
         # 石候補の画像
-        stones = result.get("stones_for_user", [])
+        element = result.get("element")
+        theme = result.get("theme")
 
         # AIの提案石から、在庫テーブルにマッチするものを選定して、メイン石とサブ石を決定するロジック
         # 1) AIの stones_for_user からメイン石を決定（1〜2個）
-        main_stones = choose_main_stones(stones)
+        main_stones = choose_main_stones(element)
 
         # 2) メインの色合いからサブ石（8mm）を決定
         sub_stones = choose_sub_stones(main_stones)
