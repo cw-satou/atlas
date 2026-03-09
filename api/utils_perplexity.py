@@ -107,6 +107,18 @@ MAIN_TO_SUB_MAP = {
     "gray":   ["マダガスカル産ローズクォーツ", "シーブルーカルセドニー"],
 }
 
+PRODUCT_MAP = {
+    ("water", "love", "f"):  {"name": "蒼海の恋", "slug": "soumi-no-koi"},
+    ("water", "heal", "f"):  {"name": "月海のやすらぎ", "slug": "tsukiumi-no-yasuragi"},
+    ("water", "action", "f"): {"name": "蒼海の勇気", "slug": "soumi-no-yuki"},
+    ("water", "intuition", "f"): {"name": "蒼海のひらめき", "slug": "soumi-no-hirameki"},
+
+    ("water", "love", "m"):  {"name": "深海の誓い", "slug": "shinkai-no-chikai"},
+    ("water", "heal", "m"):  {"name": "蒼月の静寂", "slug": "sougetsu-no-seijaku"},
+    ("water", "action", "m"): {"name": "潮流の勇気", "slug": "choryu-no-yuki"},
+    ("water", "intuition", "m"): {"name": "海風の叡智", "slug": "umikaze-no-eichi"}
+
+}
 STONE_SIZES = {
     "main10": 10,
     "main12": 12,
@@ -129,8 +141,10 @@ THEME_SUFFIX = {
     "intuition": ["のひらめき", "の導き", "の叡智"]
 }
 
+
 def bracelet_length(inner_size):
     return inner_size * 10 + 10
+
 
 def fixed_length(main_size):
 
@@ -138,6 +152,7 @@ def fixed_length(main_size):
     spacer_total = 5 * 3
 
     return main_total + spacer_total
+
 
 def calculate_8mm_with_spacers(inner_size, main_size):
 
@@ -170,6 +185,7 @@ def calculate_8mm_with_spacers(inner_size, main_size):
         "spacer2": spacer2
     }
 
+
 ELEMENT_NAMES = {
     "water": ["蒼海", "月海", "星海"],
     "fire": ["紅炎", "太陽", "焔"],
@@ -198,6 +214,57 @@ THEME_EN = {
     "intuition": "Insight"
 }
 
+
+def choose_product(element, theme, gender, kiraboshi=False):
+
+    key = (element, theme, gender)
+
+    product = PRODUCT_MAP.get(key)
+
+    if not product:
+        return None
+
+    name = product["name"]
+    slug = product["slug"]
+
+    if kiraboshi:
+        name = f"輝星 / {name}"
+        slug = f"{slug}-kiraboshi"
+
+    return {
+        "product_name": name,
+        "product_slug": slug
+    }
+
+
+def choose_theme(concerns):
+
+    if not concerns:
+        return "love"
+
+    if "恋愛" in concerns:
+        return "love"
+
+    if "健康" in concerns:
+        return "heal"
+
+    if "仕事" in concerns:
+        return "action"
+
+    if "金運" in concerns:
+        return "action"
+
+    return "intuition"
+
+
+def normalize_gender(g):
+
+    if g == "男性":
+        return "m"
+
+    return "f"
+
+
 def generate_bracelet_name_en(element, theme):
 
     el = ELEMENT_EN.get(element, "Star")
@@ -205,35 +272,35 @@ def generate_bracelet_name_en(element, theme):
 
     return f"{el} {th}"
 
+
 def generate_bracelet_name_en(element, theme):
 
     el = ELEMENT_EN.get(element, "Star")
     th = THEME_EN.get(theme, "Light")
 
     return f"{el} {th}"
+
 
 def generate_bracelet_image(layout):
 
-    stones = [x for x in layout if "spacer" not in x]
+    stones = ", ".join(layout)
 
-    stone_text = ", ".join(stones)
+    prompt = f"""
+gemstone bracelet, realistic jewelry photography,
+natural crystal beads bracelet,
+layout: {stones},
+soft lighting, white background,
+high quality, product photography
+"""
 
-    prompt = (
-        f"luxury gemstone bracelet, {stone_text}, "
-        "symmetrical round bead bracelet, crystal jewelry, "
-        "high-end jewelry photography, white background, soft light"
+    url = (
+        "https://image.pollinations.ai/prompt/"
+        + prompt.replace(" ", "%20")
+        + "?width=600&height=400"
     )
 
-    resp = client.chat.completions.create(
-        model="nano-banana-2",
-        messages=[
-            {"role": "system", "content": "You generate product images."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.3
-    )
+    return url
 
-    return resp.choices[0].message.content
 
 def generate_bracelet_name(element, theme):
 
@@ -245,34 +312,45 @@ def generate_bracelet_name(element, theme):
 
     return prefix + suffix
 
+
 def generate_bracelet_design(result, inner_size, element="water", theme="love"):
 
     name = generate_bracelet_name(element, theme)
     name_en = generate_bracelet_name_en(element, theme)
 
-    main = result["stones_main"]
-    sub = result["stones_sub"]
+    main = result["stones_main"][0]
+    sub = result["stones_sub"][0]
 
-    main_size = main[0]["size"]
+    main_name = main["name"]
+    main_size = main["size"]
 
+    sub_name = sub["name"]
+
+    # 8mm石の計算
     calc = calculate_8mm_with_spacers(inner_size, main_size)
 
     beads8 = calc["8mm"]
     spacer2 = calc["spacer2"]
 
-    layout = generate_bracelet_layout(main, sub, beads8, spacer2)
+    # レイアウト生成
+    layout = generate_bracelet_layout(
+        main_name,
+        sub_name,
+        beads8,
+        spacer2
+    )
 
+    # 石カウント
     stone_counts = count_stones(layout)
 
-    name = generate_bracelet_name(element, theme)
-
+    # 画像生成
     image_data = generate_bracelet_image(layout)
 
     return {
         "bracelet_name": name,
         "bracelet_name_en": name_en,
         "size": inner_size,
-        "main_stone": main[0]["name"],
+        "main_stone": main_name,
         "main_size": main_size,
         "layout": layout,
         "stone_counts": stone_counts,
@@ -282,49 +360,42 @@ def generate_bracelet_design(result, inner_size, element="water", theme="love"):
         "image": image_data
     }
 
-def generate_bracelet_layout(main_stones, sub_stones, bead_count):
 
-    main = main_stones[0]["name"]
-    sub = sub_stones[0]["name"] if sub_stones else "水晶"
+def generate_bracelet_layout(main_stone, sub_stone, beads8, spacer2):
 
     layout = []
 
-    # 奇数ならセンター配置
-    if bead_count % 2 == 1:
+    # 左メイン
+    layout.append(main_stone)
+    layout.append("5mmスペーサー")
 
-        center = "水晶"
+    sub_counter = 0
+    spacer_used = 0
 
-        half = (bead_count - 1) // 2
+    for i in range(beads8):
 
-        pattern = []
+        layout.append(sub_stone)
+        sub_counter += 1
 
-        for i in range(half):
-            if i % 4 == 1:
-                pattern.append(main)
-            else:
-                pattern.append(sub)
+        # 3個ごとに2mm
+        if sub_counter == 3 and spacer_used < spacer2:
+            layout.append("2mmスペーサー")
+            spacer_used += 1
+            sub_counter = 0
 
-        layout = pattern + [center] + pattern[::-1]
+    # 右メイン
+    layout.append("5mmスペーサー")
+    layout.append(main_stone)
 
-    else:
-
-        half = bead_count // 2
-
-        pattern = []
-
-        for i in range(half):
-            if i % 4 == 1:
-                pattern.append(main)
-            else:
-                pattern.append(sub)
-
-        layout = pattern + pattern[::-1]
+    # 結び目側
+    layout.append("5mmスペーサー")
 
     return layout
 
 
 def count_stones(layout):
     return dict(Counter(layout))
+
 
 SYSTEM_PROMPT = """
 あなたは、西洋占星術とクリスタルヒーリングに精通したプロの占い師です。
@@ -371,6 +442,7 @@ AVAILABLE_STONES = """
 # - カーネリアン（赤）
 # """
 
+
 def generate_bracelet_layout(main_stones, sub_stones, beads8, spacer2):
 
     main = main_stones[0]["name"]
@@ -405,6 +477,7 @@ def generate_bracelet_layout(main_stones, sub_stones, beads8, spacer2):
     layout.append("spacer5")
 
     return layout
+
 
 def generate_today_fortune(user_input: dict) -> str:
     """生年月日・出生時間・出生地を使って「今日の運勢」を生成"""
@@ -464,6 +537,7 @@ def generate_today_fortune(user_input: dict) -> str:
     content = resp.choices[0].message.content.strip()
     return content
 
+
 def create_user_prompt(user_input, oracle_result):
     """ユーザー情報とオラクル結果からプロンプトを生成"""
     birth = user_input.get('birth', {})
@@ -513,6 +587,8 @@ def create_user_prompt(user_input, oracle_result):
   ]
 }}
 """
+
+
 def choose_main_stones(ai_stones):
     # AIの提案名から、在庫テーブルにマッチするものだけ拾う
     matched = []
@@ -522,7 +598,8 @@ def choose_main_stones(ai_stones):
             if info["role"] != "main":
                 continue
             if stock_name in name:
-                matched.append({"name": stock_name, **info, "reason": s.get("reason", "")})
+                matched.append({"name": stock_name, **info,
+                               "reason": s.get("reason", "")})
                 break
 
     # 何もマッチしなければ、適当なメイン1個フォールバック
@@ -537,6 +614,7 @@ def choose_main_stones(ai_stones):
 
     # 最大2個までに制限
     return matched[:2]
+
 
 def choose_sub_stones(main_stones):
     sub_candidates = []
@@ -556,6 +634,7 @@ def choose_sub_stones(main_stones):
         uniq[s["name"]] = s
     # サブは1〜2個程度
     return list(uniq.values())[:2]
+
 
 def generate_bracelet_reading(user_input: dict) -> dict:
     """ユーザー情報に基づき、オラクルカード・鑑定・石の提案を生成"""
@@ -591,7 +670,7 @@ def generate_bracelet_reading(user_input: dict) -> dict:
             temperature=0.7,
             max_tokens=3000
         )
-        
+
         print("=== RESPONSE OBJECT ===")
         print(resp)
 
@@ -607,7 +686,7 @@ def generate_bracelet_reading(user_input: dict) -> dict:
 
         # 引用表記削除
         content = re.sub(r'\[\d+\]', '', content)
-        
+
         print("=== CLEANED CONTENT ===")
         print(content)
 
@@ -644,7 +723,7 @@ def generate_bracelet_reading(user_input: dict) -> dict:
         # 3. 画像生成URL (Pollinations.ai)
         # オラクルカード画像
         card_prompt = f"oracle card art of {card['en']}, mystical glowing gemstone, divine light, intricate golden border, fantasy art, tarot style, high quality, 8k"
-        card_image_url = f"https://image.pollinations.ai/prompt/{card_prompt.replace(' ', '%20')}?width=400&height=600&seed={random.randint(0,9999)}"
+        card_image_url = f"https://image.pollinations.ai/prompt/{card_prompt.replace(' ', '%20')}?width=400&height=600&seed={random.randint(0, 9999)}"
 
         # 石候補の画像
         stones = result.get("stones_for_user", [])
@@ -675,20 +754,35 @@ def generate_bracelet_reading(user_input: dict) -> dict:
         }
 
         # 3-B) 石画像プロンプトは「最終決定済みstones_for_user」から作る
-        stone_names_ja = ", ".join([s["name"] for s in result["stones_for_user"]])
+        stone_names_ja = ", ".join([s["name"]
+                                   for s in result["stones_for_user"]])
         stones_prompt = (
             f"gemstone bracelet design, {stone_names_ja}, crystal photography, "
             "soft lighting, white background, high quality, 8k"
         )
-        stones_image_url = (
-            f"https://image.pollinations.ai/prompt/"
-            f"{stones_prompt.replace(' ', '%20')}?width=600&height=400&seed={random.randint(0,9999)}"
-        )
+        bracelet_prompt = f"""
+        luxury gemstone bracelet,
+        {stone_names_ja},
+        japanese spiritual jewelry,
+        white background,
+        product photography,
+        high quality
+        """
+
+        result["image_prompt"] = bracelet_prompt
 
         result['stones_image_url'] = stones_image_url
-        result['phase'] = 'stones_only'  # フロント側で判別用
 
-        return result
+        element = "water"  # 今は固定
+        theme = choose_theme(user_input.get("concerns", []))
+        gender = normalize_gender(user_input.get("gender"))
+
+        product = choose_product(element, theme, gender)
+
+        if product:
+            result["product_name"] = product["product_name"]
+            result["product_slug"] = product["product_slug"]
+            return result
 
     except Exception as e:
         print(f"Perplexity API Error: {e}")

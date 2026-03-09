@@ -636,7 +636,9 @@
         }
         function selectGender(gender, el) {
             formData.gender = gender;
-            document.querySelectorAll('.input-field:first-child .btn-toggle').forEach(b => b.classList.remove('active'));
+            el.parentElement
+                .querySelectorAll('.btn-toggle')
+                .forEach(b => b.classList.remove('active'));
             el.classList.add('active');
         }
         function stepStoneSelectMethod() {
@@ -769,7 +771,7 @@
         }
 
         async function executeDiagnose() {
-
+            setProgress(3, 4, "導きの石を選定");
             const nameForDisplay = getUserNameForDisplay();
             let problem = document.getElementById('problemText')?.value || '';
             const date = formData.birth?.date;
@@ -1285,6 +1287,14 @@
                     clearInputArea();
                     return;
                 }
+                await addMsg(
+                    "あなたの星の流れと石の相性から、一本のブレスレットが形になりました。",
+                    false
+                );
+                await addMsg(
+                    "この石たちは、今のあなたの流れを支える配置で組み上げられています。",
+                    false
+                );
                 displayBraceletResult(json.bracelet || json);
             } catch (err) {
                 addMsg('通信エラーが発生しました', false);
@@ -1302,7 +1312,9 @@
             const section = document.createElement('div');
             section.className = 'result-section';
 
-            let html = `<h3>💎 ${nameForDisplay}を導くブレスレット</h3>`;
+            let html = `<h3>💎 ${nameForDisplay}を導くブレスレット</h3>` + `<p style="font-size:18px;font-weight:bold;">
+${data.product_name}
+</p>`;
 
             // 商品名
             if (data.name || data.bracelet_name) {
@@ -1315,12 +1327,12 @@
             }
 
             // 画像
-            if (data.image_url || data.image) {
+            if (data.image_url) {
                 html += `
-        <img 
-            src="${data.image_url || data.image}" 
-            style="width:100%;border-radius:12px;margin:12px 0;"
-        >`;
+<img 
+    src="${data.image_url}" 
+    style="width:100%;border-radius:12px;margin:12px 0;"
+>`;
             }
 
             // デザイン説明
@@ -1346,13 +1358,27 @@
 
             // 注文ボタン
             setInputArea(`
-        <button class="btn" onclick="confirmOrder()">
-          📱 LINEでオーダーする
+        <button class="btn" onclick="goToProduct()">
+        🛒 このブレスレットを購入する
         </button>
         <button class="btn btn-secondary" onclick="restartFromBeginning()">
           🔄 もう一度占う
         </button>
     `);
+        }
+        function goToProduct() {
+
+            const slug = divinationResult.product_slug || divinationResult.bracelet?.product_slug;
+
+            if (!slug) {
+                addMsg("商品ページが見つかりませんでした", false);
+                return;
+            }
+
+            const url = `https://spicastar.info/atlas/shop/product/${slug}/`;
+
+            window.location.href = url;
+
         }
         function confirmOrder() {
             const diagnosisId = window.diagnosisId;
