@@ -91,7 +91,7 @@
         .msg {
             position: relative;
             padding: 18px 20px;
-            background: rgba(255, 248, 235, 0.90);
+            background: rgba(255, 248, 235, 0.80);
             color: #333;
             backdrop-filter: blur(3px);
             border-radius: 18px;
@@ -138,7 +138,7 @@
         .input-area {
             padding: 20px;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
-            background: #fff;
+            background: rgba(255, 248, 235, 0.80);
             color: #333;
             z-index: 3;
         }
@@ -298,7 +298,33 @@
             pointer-events: none;
         }
 
+        /* ロゴオーバーレイ */
+        .logo-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #013;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1.2s ease;
+        }
+
+        .logo-image {
+            max-width: 70%;
+            height: auto;
+        }
+
+        /* フェードイン用 */
+        .fade-in {
+            opacity: 1 !important;
+        }
+
         .fortune-girl {
+            opacity: 0;
+            transition: opacity 1.2s ease;
             position: absolute;
             inset: 0;
 
@@ -318,6 +344,9 @@
 
 <body>
     <div class="container">
+        <div id="logoOverlay" class="logo-overlay">
+            <img src="/res/img/logo.png" alt="星の羅針盤 あとらす" class="logo-image">
+        </div>
         <canvas id="starfield"></canvas>
         <div class="fortune-girl"></div>
         <div class="chat-box" id="chatBox"></div>
@@ -1491,7 +1520,48 @@
 
         let userId = null;
 
-        window.onload = async function () {
+        // ★ ページ読み込み時は「アニメだけ」やる
+        window.onload = function () {
+            const logoOverlay = document.getElementById('logoOverlay');
+            const fortuneGirl = document.querySelector('.fortune-girl');
+
+            // 1. ロゴをフェードイン
+            setTimeout(() => {
+                if (!logoOverlay) return;
+                logoOverlay.style.pointerEvents = 'auto';
+                logoOverlay.classList.add('fade-in');
+            }, 300);
+
+            const logoDisplayTime = 1800; // ロゴが見えている時間
+            const fadeDuration = 1200;   // CSS と合わせる
+
+            // 2. ロゴ表示キープ → フェードアウト → 背景フェードイン → 会話開始
+            setTimeout(() => {
+                if (!logoOverlay) {
+                    initChatFlow(); // 安全策
+                    return;
+                }
+
+                // ロゴをフェードアウト
+                logoOverlay.classList.remove('fade-in');
+
+                // ロゴが薄れてきたら背景フェードイン
+                setTimeout(() => {
+                    if (fortuneGirl) {
+                        fortuneGirl.classList.add('fade-in');
+                    }
+
+                    // 背景フェードイン完了後にロゴオーバーレイを無効化して会話スタート
+                    setTimeout(() => {
+                        logoOverlay.style.display = 'none';
+                        logoOverlay.style.pointerEvents = 'none';
+                        initChatFlow(); // ★ここで会話開始
+                    }, fadeDuration);
+                }, fadeDuration / 2);
+            }, 300 + logoDisplayTime);
+        };
+
+        async function initChatFlow() {
             // 1) userId を cookie から読み込み or 新規発行
             userId = getCookie('hoshin_user_id');
             if (userId) {
@@ -1506,18 +1576,9 @@
                 }
             }
 
-
             const box = document.getElementById('chatBox');
             box.innerHTML = '';
             await addMsg(getGreetingMessage(), false);
-
-            // 2) ここでサーバからプロフィール取得（あとでAPI実装）
-            // 例:
-            // const res = await fetch(`/api/profile?user_id=${encodeURIComponent(userId)}`);
-            // if (res.ok) {
-            //   const profile = await res.json();
-            //   formData = { ...formData, ...profile };
-            // }
 
             // 3) ローカルのlocalStorageもあればマージ（任意）
             const saved = localStorage.getItem('hoshin-profile');
@@ -1527,8 +1588,7 @@
             }
 
             stepModeSelect();
-        };
-
+        }
 
     </script>
     <script>
