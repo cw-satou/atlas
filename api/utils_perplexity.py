@@ -731,11 +731,25 @@ def generate_bracelet_reading(user_input: dict) -> dict:
                 "element_lack": ""
             }
 
+        if not isinstance(result, dict):
+            result = {
+                "destiny_map": str(result),
+                "past": "",
+                "present_future": "",
+                "element_diagnosis": "",
+                "oracle_message": "",
+                "bracelet_proposal": "",
+                "stone_support_message": "",
+                "stones_main": [{"name": "メイン石"}],
+                "stones_sub": [{"name": "サブ石"}],
+                "element_lack": ""
+            }
+
         # --- 石選定 ---
         element = result.get("element")
         theme = result.get("theme")
 
-        main_stones = choose_main_stones(element)
+        main_stones = choose_main_stones(result.get("stones_for_user", []))
         sub_stones = choose_sub_stones(main_stones)
 
         result["stones_for_user"] = main_stones + sub_stones
