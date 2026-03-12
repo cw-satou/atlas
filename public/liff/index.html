@@ -839,7 +839,7 @@
                         "ここまでの流れから、今のあなたを整える石が見えてきました。",
                         false
                     );
-                    await addMsg(`今回あなたを導く石は **${stoneName}** です。`, false);
+                    await addMsg(`今回の診断であなたの軸となる石は **${stoneName}** です。`, false);
                     await addMsg(
                         "もしこの石たちと一緒に歩いてみたいと感じたなら、あなたのためのブレスレットとして形にしてみましょう。",
                         false
@@ -900,9 +900,6 @@
                     ? '最後のメッセージまで読む'
                     : '次のメッセージを読む';
                 await addMsg(label, true);
-                if (next && next.lead) {
-                    await addMsg(next.lead, false);
-                }
                 currentIndex++;
                 showCurrentSection();
             }
