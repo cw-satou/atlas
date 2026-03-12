@@ -974,14 +974,35 @@
                     await typeIntoElement(p2, result.oracle_message, 20);
                 }
 
-                setTimeout(() => {
-                    currentIndex++;
-                    showCurrentSection();
-                }, 1500);
+                setInputArea(`
+<button class="btn" onclick="showNextSection()">
+次のメッセージを読む
+</button>
+`);
             }
 
             showCurrentSection();
         }
+        window.showNextSection = async function () {
+
+            const next = sections[currentIndex + 1];
+
+            const isLast = (currentIndex === sections.length - 1);
+
+            const label = isLast
+                ? '最後のメッセージまで読む'
+                : '次のメッセージを読む';
+
+            await addMsg(label, true);
+
+            if (next && next.lead) {
+                await addMsg(next.lead, false);
+            }
+
+            currentIndex++;
+
+            showCurrentSection();
+        };
         function selectOrderType(type) {
             if (type === 'custom') {
                 addMsg('オーダーメイド（カスタマイズ）', true);
