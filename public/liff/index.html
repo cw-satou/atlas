@@ -1388,9 +1388,7 @@ ${data.product_name || data.bracelet_name || ""}
 
             return new Promise((resolve) => {
 
-                const formatted = formatText(text);
-
-                const plain = formatted
+                const plain = text
                     .replace(/<br\s*\/?>/gi, "\n")
                     .replace(/<[^>]*>/g, "");
 
@@ -1399,20 +1397,27 @@ ${data.product_name || data.bracelet_name || ""}
                 function type() {
 
                     if (i < plain.length) {
+
                         element.textContent = plain.slice(0, i + 1);
+
                         i++;
+
                         scrollChatToBottom();
+
                         setTimeout(type, speed);
 
                     } else {
 
-                        element.innerHTML = formatted;
+                        element.innerHTML = text;
+
                         resolve();
 
                     }
+
                 }
 
                 type();
+
             });
         }
         function getCookie(name) {
