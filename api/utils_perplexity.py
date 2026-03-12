@@ -182,6 +182,27 @@ AVAILABLE_STONES = "\n".join([
     "- グレークォーツ",
 ])
 
+SIGN_JA = {
+    "Aries": "牡羊座",
+    "Taurus": "牡牛座",
+    "Gemini": "双子座",
+    "Cancer": "蟹座",
+    "Leo": "獅子座",
+    "Virgo": "乙女座",
+    "Libra": "天秤座",
+    "Scorpio": "蠍座",
+    "Sagittarius": "射手座",
+    "Capricorn": "山羊座",
+    "Aquarius": "水瓶座",
+    "Pisces": "魚座",
+}
+
+ELEMENT_JA = {
+    "fire": "火",
+    "earth": "地",
+    "wind": "風",
+    "water": "水",
+}
 
 SYSTEM_PROMPT = f"""
 あなたは、西洋占星術とクリスタルヒーリングに精通したプロの占い師です。
@@ -200,6 +221,8 @@ SYSTEM_PROMPT = f"""
 10. destiny_map では、可能であれば出生時間・出生地も活かして、
    「生まれた時間帯」や「生まれた土地のイメージ」から感じられる
    人生の舞台設定や雰囲気にもやさしく触れてください。
+11. 出力する文章はすべて日本語で書き、英単語の星座名やエレメント名
+    （Gemini, fire など）は使わず、日本語の表現に言い換えてください。
 
 【石の候補】
 {AVAILABLE_STONES}
@@ -270,20 +293,6 @@ def choose_products(main_stone, sub_stones):
 
 
 
-def choose_theme(concerns):
-    if not concerns:
-        return "love"
-    if "恋愛" in concerns:
-        return "love"
-    if "健康" in concerns:
-        return "heal"
-    if "仕事" in concerns:
-        return "action"
-    if "金運" in concerns:
-        return "action"
-    return "intuition"
-
-
 def build_chart_data(user_input=None, chart_data=None):
     base = chart_data or {
         "sun": astro_data.get("sun"),
@@ -307,22 +316,39 @@ def build_chart_data(user_input=None, chart_data=None):
             "fire": fire,
             "earth": earth,
             "wind": wind,
-            "water": water
+            "water": water,
         })
 
+    sun = base.get("sun", "Gemini")
+    moon = base.get("moon", "Pisces")
+    asc = base.get("asc", "Cancer")
+    mercury = base.get("mercury", "Taurus")
+    venus = base.get("venus", "Cancer")
+    mars = base.get("mars", "Leo")
+
     return {
-        "sun": base.get("sun", "Gemini"),
-        "moon": base.get("moon", "Pisces"),
-        "asc": base.get("asc", "Cancer"),
-        "mercury": base.get("mercury", "Taurus"),
-        "venus": base.get("venus", "Cancer"),
-        "mars": base.get("mars", "Leo"),
+        # 内部用（英語）
+        "sun": sun,
+        "moon": moon,
+        "asc": asc,
+        "mercury": mercury,
+        "venus": venus,
+        "mars": mars,
         "fire": fire,
         "earth": earth,
         "wind": wind,
         "water": water,
         "element_lack": element_lack,
+        # 表示用（日本語）
+        "sun_ja": SIGN_JA.get(sun, sun),
+        "moon_ja": SIGN_JA.get(moon, moon),
+        "asc_ja": SIGN_JA.get(asc, asc),
+        "mercury_ja": SIGN_JA.get(mercury, mercury),
+        "venus_ja": SIGN_JA.get(venus, venus),
+        "mars_ja": SIGN_JA.get(mars, mars),
+        "element_lack_ja": ELEMENT_JA.get(element_lack, element_lack),
     }
+
 
 
 def build_common_user_context(user_input, chart_data=None, oracle_result=None):
@@ -363,12 +389,13 @@ def build_common_user_context(user_input, chart_data=None, oracle_result=None):
 人生の転換期や強い浄化が必要な場合のみ選択してください。
 
 【ホロスコープ分析】
-太陽星座: {cd['sun']}
-月星座: {cd['moon']}
-ASC: {cd['asc']}
-水星: {cd['mercury']}
-金星: {cd['venus']}
-火星: {cd['mars']}
+太陽星座: {cd['sun_ja']}
+月星座: {cd['moon_ja']}
+ASC: {cd['asc_ja']}
+水星: {cd['mercury_ja']}
+金星: {cd['venus_ja']}
+火星: {cd['mars_ja']}
+
 
 エレメントバランス
 火:{cd['fire']}
@@ -376,11 +403,11 @@ ASC: {cd['asc']}
 風:{cd['wind']}
 水:{cd['water']}
 
+
 不足エレメント
-{cd['element_lack']}
+{cd['element_lack_ja']}
 {oracle_text}
 """
-
 
 def create_today_fortune_prompt(user_input, chart_data=None):
     common_context = build_common_user_context(
@@ -471,12 +498,12 @@ def create_user_prompt(user_input, oracle_result, chart_data=None):
 "element_diagnosis": "4エレメントのバランスとアドバイスを80文字程度で説明。",
 "oracle_message": "引いたカード「{oracle_result['card']['name']}」の{position_str}のメッセージを100文字程度で説明。",
 "bracelet_proposal": "ブレスレットがどのような願いをサポートするか80文字程度で説明。",
-"stone_support_message": "ユーザーの悩みと人生テーマに対して石がどのようにサポートするか120文字程度で説明。",
+"stone_support_message": "ユーザーの悩みと人生テーマに対して石がどのようにサポートするか120文字程度で説明。必ず日本語のみで書き、英単語の星座名やエレメント名（Gemini, fire など）は使わないこと。",
 "chosen_stone": {{
   "name": "選ばれた石の名前",
   "reason": "ホロスコープ・悩み・カードの観点からその石が必要な理由"
 }},
-"element": "ユーザーに必要なエレメント (water/fire/wind/earth)",
+"element": "ユーザーに必要なエレメント（火・地・風・水のいずれか。値は fire/earth/wind/water の英単語で返す）",
 "theme": "テーマ (love/heal/action/intuition)"
 }}
 
