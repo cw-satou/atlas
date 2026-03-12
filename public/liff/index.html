@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +18,6 @@
             padding: 0;
             box-sizing: border-box;
         }
-
         @font-face {
             font-family: "LINESeedJP";
             src: url('https://astral-gamma.vercel.app/res/fonts/LINESeedJP.woff') format('woff');
@@ -27,7 +25,6 @@
             font-style: normal;
             font-display: swap;
         }
-
         body,
         h1,
         h2,
@@ -45,7 +42,6 @@
         option {
             font-family: "LINESeedJP", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif !important;
         }
-
         html,
         body {
             height: 100%;
@@ -53,13 +49,11 @@
             padding: 0;
             overflow: hidden;
         }
-
         body {
             background: #FFF;
             color: #222;
             min-height: 100vh;
         }
-
         /* コンテナ */
         .container {
             max-width: 480px;
@@ -74,7 +68,6 @@
             overflow: hidden;
             position: relative;
         }
-
         /* チャット */
         .chat-box {
             flex: 1;
@@ -86,7 +79,6 @@
             margin: 6px;
             z-index: 2;
         }
-
         /* メッセージ */
         .msg {
             position: relative;
@@ -101,7 +93,6 @@
             border: 1px solid transparent;
             box-shadow: none;
         }
-
         /* 診断メッセージ */
         .msg.bot {
             border-radius: 20px;
@@ -112,7 +103,6 @@
                 0 0 2px rgba(255, 245, 220, 0.9);
             line-height: 1.5;
         }
-
         /* ユーザー */
         .msg.user {
             border-radius: 20px;
@@ -122,18 +112,15 @@
                 0 0 12px rgba(210, 180, 140, 0.45),
                 0 0 4px rgba(210, 180, 140, 0.6);
         }
-
         .result-section p strong,
         .msg.bot strong,
         .msg.user strong {
             font-weight: 700;
             color: #222;
         }
-
         .loading p {
             color: #222;
         }
-
         /* 入力エリア */
         .input-area {
             padding: 20px;
@@ -142,19 +129,16 @@
             color: #222;
             z-index: 3;
         }
-
         /* 入力 */
         .input-field {
             margin-bottom: 12px;
         }
-
         .input-field label {
             font-size: 12px;
             color: #222;
             margin-bottom: 4px;
             display: block;
         }
-
         .input-field input,
         .input-field textarea,
         .input-field select {
@@ -165,11 +149,9 @@
             border: 1px solid #ddd;
             color: #222;
         }
-
         textarea {
             resize: vertical;
         }
-
         /* メインボタン */
         .btn {
             width: 100%;
@@ -184,7 +166,6 @@
             margin-bottom: 10px;
             transition: all .15s ease;
         }
-
         /* hover */
         .btn:hover {
             background: #666;
@@ -192,13 +173,11 @@
             transform: translateY(-1px);
             box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
         }
-
         /* サブボタン */
         .btn-secondary {
             background: #fff;
             color: #222;
         }
-
         /* 選択チップ */
         .btn-toggle {
             padding: 8px 14px;
@@ -210,12 +189,10 @@
             transition: all .15s ease;
             margin: 4px;
         }
-
         /* hover */
         .btn-toggle:hover {
             background: #ececec;
         }
-
         /* 選択状態 */
         .btn-toggle.active {
             background: #63946e;
@@ -223,7 +200,6 @@
             color: #fff;
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
         }
-
         /* 結果カード */
         .result-section {
             background:
@@ -237,26 +213,22 @@
             /* 影を少し弱める */
             padding: 14px 16px;
         }
-
         .result-section h3 {
             letter-spacing: 0.08em;
             color: #222;
             margin-bottom: 8px;
             font-size: 13px;
         }
-
         .result-section p {
             font-size: 14px;
             line-height: 1.8;
             color: #222;
         }
-
         /* ローディング */
         .loading {
             text-align: center;
             padding: 40px;
         }
-
         .spinner {
             width: 40px;
             height: 40px;
@@ -266,7 +238,6 @@
             animation: spin 1s linear infinite;
             margin: auto;
         }
-
         .flatpickr-calendar {
             background: #ffffff;
             border-radius: 16px;
@@ -275,18 +246,15 @@
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
             color: #222;
         }
-
         .flatpickr-day.selected {
             background: #3b6892;
             color: white;
         }
-
         @keyframes spin {
             to {
                 transform: rotate(360deg)
             }
         }
-
         #starfield {
             top: 0;
             left: 0;
@@ -297,7 +265,6 @@
             z-index: 2;
             pointer-events: none;
         }
-
         /* ロゴオーバーレイ */
         .logo-overlay {
             position: absolute;
@@ -311,17 +278,14 @@
             pointer-events: none;
             transition: opacity 1.2s ease;
         }
-
         .logo-image {
             max-width: 70%;
             height: auto;
         }
-
         /* フェードイン用 */
         .fade-in {
             opacity: 1 !important;
         }
-
         .fortune-girl {
             opacity: 0;
             transition: opacity 1.2s ease;
@@ -334,7 +298,6 @@
             pointer-events: none;
             z-index: 1;
         }
-
         .progress-bar {
             padding: 10px;
             font-size: 12px;
@@ -344,7 +307,6 @@
         }
     </style>
 </head>
-
 <body>
     <div class="container">
         <div id="progressBar" class="progress-bar"></div>
@@ -374,11 +336,11 @@
             const hour = new Date().getHours();
             const nameForDisplay = getUserNameForDisplay();
             if (hour >= 5 && hour < 11) {
-                return `おはようございます。星の羅針盤「あとらす」です。\n\n今の気分や、ちょっと気になっていることがあれば、ここで整理してみませんか？\nあなたのお話と星の流れをもとに、今のあなたに合いそうな石や過ごし方のヒントをお伝えします。`;
+                return `おはようございます。星の羅針盤「あとらす」です。今の気分や、ちょっと気になっていることがあれば、ここで整理してみませんか？\n\nあなたのお話と星の流れをもとに、今のあなたに合いそうな石や過ごし方のヒントをお伝えします。`;
             } else if (hour >= 11 && hour < 17) {
-                return `こんにちは。星の羅針盤「あとらす」です。\n\n仕事や人間関係、これからのことなど、頭の中が少しごちゃごちゃしているときは、一度言葉にしてみるのがおすすめです。\nいま気になっていることを教えていただければ、星の配置とあわせて、落ち着いて考えるためのヒントをお出しします。`;
+                return `こんにちは。星の羅針盤「あとらす」です。仕事や人間関係、これからのことなど、頭の中が少しごちゃごちゃしているときは、一度言葉にしてみるのがおすすめです。\n\nいま気になっていることを教えていただければ、星の配置とあわせて、落ち着いて考えるためのヒントをお出しします。`;
             } else {
-                return `こんばんは。星の羅針盤「あとらす」です。\n\n一日の終わりに、心の中を少しだけ振り返ってみませんか。\nうまく言葉にならなくても大丈夫なので、気になっていることやモヤモヤしていることを、ここにそのまま書いてみてください。`;
+                return `こんばんは。星の羅針盤「あとらす」です。一日の終わりに、心の中を少しだけ振り返ってみませんか。\n\nうまく言葉にならなくても大丈夫なので、気になっていることやモヤモヤしていることを、ここにそのまま書いてみてください。`;
             }
         }
         function addMsg(text, isUser = false) {
@@ -480,8 +442,7 @@
             stepConcerns();
         }
         async function stepDivinationIntro() {
-            await addMsg("まずは、今のあなたについて少しだけ教えてください。", false);
-            await addMsg("はっきりした悩みがなくても大丈夫です。", false);
+            await addMsg("まずは、今のあなたについて少しだけ教えてください。\nはっきりした悩みがなくても大丈夫です。", false);
             await addMsg(
                 "なんとなく気になっていることや、こうなれたらいいなと思うことがあれば、そのままの言葉で書いてください。",
                 false
@@ -711,11 +672,7 @@
             }
             addMsg(formData.concerns.join('、'), true);
             await addMsg(
-                "具体的な状況やお気持ちを、書ける範囲で教えてください。",
-                false
-            );
-            await addMsg(
-                "うまくまとまっていなくても大丈夫です。",
+                "具体的な状況やお気持ちを、書ける範囲で教えてください。\nうまくまとまっていなくても大丈夫です。",
                 false
             );
             userState = 'problem';
@@ -742,9 +699,7 @@
                 return;
             }
             // ② 悩みの確認＋診断開始メッセージ（bot側）
-            await addMsg("わかりました。ありがとうございます。", false);
-            await addMsg("この内容で星と石の流れを読み解いていきます。", false);
-            await addMsg("少しだけお待ちくださいね。", false);
+            await addMsg("わかりました。ありがとうございます。\nこの内容で星と石の流れを読み解いていきます。\n\n少しだけお待ちくださいね。", false);
             // ローディング表示
             setInputArea(`
     <div class="loading">
@@ -816,17 +771,13 @@
             scrollChatToBottom();
         }
         async function displayDivinationResult(result) {
-
             setProgress(3, 4, "導きの石を選定");
             clearInputArea();
-
             const nameForDisplay = getUserNameForDisplay();
             const stoneName =
                 result.stone_name ||
                 (result.stones_for_user?.[0]?.name || "あなたの石");
-
             const chatBox = document.getElementById("chatBox");
-
             const sections = [
                 {
                     key: "destiny_map",
@@ -865,18 +816,13 @@
                     lead: "最後に石たちのメッセージをお伝えします。"
                 }
             ].filter(sec => sec.text);
-
             let currentIndex = 0;
-
-            await addMsg("ここからは、星の配置とエレメントの流れをもとに、", false);
-            await addMsg(`${nameForDisplay}の今の流れを読み解いていきます。`, false);
-
+            await addMsg(`ここからは、星の配置とエレメントの流れをもとに、\n${nameForDisplay}の今の流れを読み解いていきます。`, false);
             function typeIntoElement(element, rawText, speed = 20) {
                 return new Promise(resolve => {
                     const text = rawText || "";
                     let i = 0;
                     element.textContent = "";
-
                     function step() {
                         if (i < text.length) {
                             element.textContent = text.slice(0, i + 1);
@@ -888,120 +834,85 @@
                             resolve();
                         }
                     }
-
                     step();
                 });
             }
-
             async function showCurrentSection() {
-
                 if (currentIndex >= sections.length) {
                     await addMsg(
                         "ここまでの流れから、今のあなたを整える石が見えてきました。",
                         false
                     );
                     await addMsg(`今回あなたを導く石は **${stoneName}** です。`, false);
-
                     await addMsg(
                         "もしこの石たちと一緒に歩いてみたいと感じたなら、あなたのためのブレスレットとして形にしてみましょう。",
                         false
                     );
-
                     setInputArea(`
 <button class="btn" onclick="stepOrderChoice()">
 💎 ブレスレットを見る
 </button>
-
 <button class="btn btn-secondary" onclick="restartFromBeginning()">
 🔄 もう一度占ってみる
 </button>
 `);
-
                     return;
                 }
-
                 const sec = sections[currentIndex];
-
                 if (sec.lead) {
                     await addMsg(sec.lead, false);
                 }
-
                 const wrapper = document.createElement("div");
                 wrapper.className = "msg bot";
-
                 const inner = document.createElement("div");
                 inner.className = "result-section";
-
                 const h3 = document.createElement("h3");
                 h3.textContent = sec.title;
-
                 const p = document.createElement("p");
-
                 inner.appendChild(h3);
                 inner.appendChild(p);
-
                 wrapper.appendChild(inner);
                 chatBox.appendChild(wrapper);
-
                 scrollChatToBottom();
-
                 await typeIntoElement(p, sec.text, 20);
-
                 if (sec.key === "element_diagnosis") {
-
                     await addMsg("エレメントのバランスを見たあと、", false);
                     await addMsg("オラクルカードも引いてみましょう。", false);
-
                     await showOracleCard(result.oracle_card);
-
                     const wrapper2 = document.createElement("div");
                     wrapper2.className = "msg bot";
-
                     const inner2 = document.createElement("div");
                     inner2.className = "result-section";
-
                     const h3b = document.createElement("h3");
                     h3b.textContent = "オラクルからのメッセージ";
-
                     const p2 = document.createElement("p");
-
                     inner2.appendChild(h3b);
                     inner2.appendChild(p2);
-
                     wrapper2.appendChild(inner2);
                     chatBox.appendChild(wrapper2);
-
                     await typeIntoElement(p2, result.oracle_message, 20);
                 }
-
                 setInputArea(`
 <button class="btn" onclick="showNextSection()">
 次のメッセージを読む
 </button>
 `);
             }
-
             showCurrentSection();
-        }
-        window.showNextSection = async function () {
-
-            const next = sections[currentIndex + 1];
-
-            const isLast = (currentIndex === sections.length - 1);
-
-            const label = isLast
-                ? '最後のメッセージまで読む'
-                : '次のメッセージを読む';
-
-            await addMsg(label, true);
-
-            if (next && next.lead) {
-                await addMsg(next.lead, false);
+            async function showNextSection() {
+                const next = sections[currentIndex + 1];
+                const isLast = (currentIndex === sections.length - 1);
+                const label = isLast
+                    ? '最後のメッセージまで読む'
+                    : '次のメッセージを読む';
+                await addMsg(label, true);
+                if (next && next.lead) {
+                    await addMsg(next.lead, false);
+                }
+                currentIndex++;
+                showCurrentSection();
             }
-
-            currentIndex++;
-
-            showCurrentSection();
+            window.showNextSection = showNextSection;
         };
         function selectOrderType(type) {
             if (type === 'custom') {
@@ -1448,38 +1359,23 @@ ${data.product_name || data.bracelet_name || ""}
             box.scrollTop = box.scrollHeight;
         }
         function typeText(element, text, speed = 40) {
-
             return new Promise((resolve) => {
-
                 const plain = text.replace(/<[^>]*>/g, "");
                 let i = 0;
-
                 element.textContent = "";
-
                 function type() {
-
                     if (i < plain.length) {
-
                         element.textContent = plain.slice(0, i + 1);
                         i++;
-
                         scrollChatToBottom();
-
                         setTimeout(type, speed);
-
                     } else {
-
                         element.innerHTML = formatText(text);
                         resolve();
-
                     }
-
                 }
-
                 type();
-
             });
-
         }
         function getCookie(name) {
             const value = `; ${document.cookie}`;
@@ -1575,7 +1471,7 @@ ${data.product_name || data.bracelet_name || ""}
             box.innerHTML = '';
             const greeting = getGreetingMessage().split("\n\n");
             for (const line of greeting) {
-                await addMsg(line, false);
+                await addMsg(getGreetingMessage(), false);
             }
             // 3) ローカルのlocalStorageもあればマージ（任意）
             const saved = localStorage.getItem('hoshin-profile');
@@ -1650,5 +1546,4 @@ ${data.product_name || data.bracelet_name || ""}
         }
     </script>
 </body>
-
 </html>
