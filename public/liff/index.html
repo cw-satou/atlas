@@ -852,7 +852,6 @@
             }
         }
         async function showCurrentSection() {
-            // 全セクション終了
             if (currentIndex >= sections.length) {
                 await addMsg(
                     `今回あなたを導く石は **${stoneName}** です。`,
@@ -887,10 +886,13 @@
             chatBox.appendChild(wrapper);
             scrollChatToBottom();
             await typeIntoElement(p, sec.text, 20);
-            // エレメント診断のあとにカード
             if (sec.key === "element_diagnosis") {
                 await addMsg(
-                    "エレメントのバランスを見たあと、オラクルカードも引いてみましょう。",
+                    "エレメントのバランスを見たあと、",
+                    false
+                );
+                await addMsg(
+                    "オラクルカードも引いてみましょう。",
                     false
                 );
                 await showOracleCard(result.oracle_card);
@@ -907,13 +909,12 @@
                 chatBox.appendChild(wrapper2);
                 await typeIntoElement(p2, result.oracle_message, 20);
             }
-            // 次のセクションへ
             setTimeout(() => {
                 currentIndex++;
                 showCurrentSection();
             }, 1500);
         }
-        async function stepOrderChoice() {
+        showCurrentSection(); async function stepOrderChoice() {
             const nameForDisplay = getUserNameForDisplay();
             await addMsg("ここからは、今回のメッセージで浮かび上がったテーマを形にしていきます。", false);
             await addMsg("今回選ばれた石たちで、あなたのブレスレットを作ります。", false);
