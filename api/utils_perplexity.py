@@ -561,8 +561,6 @@ def generate_today_fortune(user_input: dict) -> str:
 【出力ルール】
 ・チャット形式で表示されます
 ・各セクションは3〜5行以内
-・1文は短く
-・説明は簡潔に
 """
 
     resp = client.chat.completions.create(
