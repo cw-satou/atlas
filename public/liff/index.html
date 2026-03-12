@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,6 +19,7 @@
             padding: 0;
             box-sizing: border-box;
         }
+
         @font-face {
             font-family: "LINESeedJP";
             src: url('https://astral-gamma.vercel.app/res/fonts/LINESeedJP.woff') format('woff');
@@ -25,6 +27,7 @@
             font-style: normal;
             font-display: swap;
         }
+
         body,
         h1,
         h2,
@@ -42,6 +45,7 @@
         option {
             font-family: "LINESeedJP", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif !important;
         }
+
         html,
         body {
             height: 100%;
@@ -49,11 +53,13 @@
             padding: 0;
             overflow: hidden;
         }
+
         body {
             background: #FFF;
             color: #222;
             min-height: 100vh;
         }
+
         /* コンテナ */
         .container {
             max-width: 480px;
@@ -68,6 +74,7 @@
             overflow: hidden;
             position: relative;
         }
+
         /* チャット */
         .chat-box {
             flex: 1;
@@ -79,6 +86,7 @@
             margin: 6px;
             z-index: 2;
         }
+
         /* メッセージ */
         .msg {
             position: relative;
@@ -93,6 +101,7 @@
             border: 1px solid transparent;
             box-shadow: none;
         }
+
         /* 診断メッセージ */
         .msg.bot {
             border-radius: 20px;
@@ -103,6 +112,7 @@
                 0 0 2px rgba(255, 245, 220, 0.9);
             line-height: 1.5;
         }
+
         /* ユーザー */
         .msg.user {
             border-radius: 20px;
@@ -112,15 +122,18 @@
                 0 0 12px rgba(210, 180, 140, 0.45),
                 0 0 4px rgba(210, 180, 140, 0.6);
         }
+
         .result-section p strong,
         .msg.bot strong,
         .msg.user strong {
             font-weight: 700;
             color: #222;
         }
+
         .loading p {
             color: #222;
         }
+
         /* 入力エリア */
         .input-area {
             padding: 20px;
@@ -129,16 +142,19 @@
             color: #222;
             z-index: 3;
         }
+
         /* 入力 */
         .input-field {
             margin-bottom: 12px;
         }
+
         .input-field label {
             font-size: 12px;
             color: #222;
             margin-bottom: 4px;
             display: block;
         }
+
         .input-field input,
         .input-field textarea,
         .input-field select {
@@ -149,9 +165,11 @@
             border: 1px solid #ddd;
             color: #222;
         }
+
         textarea {
             resize: vertical;
         }
+
         /* メインボタン */
         .btn {
             width: 100%;
@@ -166,6 +184,7 @@
             margin-bottom: 10px;
             transition: all .15s ease;
         }
+
         /* hover */
         .btn:hover {
             background: #666;
@@ -173,11 +192,13 @@
             transform: translateY(-1px);
             box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
         }
+
         /* サブボタン */
         .btn-secondary {
             background: #fff;
             color: #222;
         }
+
         /* 選択チップ */
         .btn-toggle {
             padding: 8px 14px;
@@ -189,10 +210,12 @@
             transition: all .15s ease;
             margin: 4px;
         }
+
         /* hover */
         .btn-toggle:hover {
             background: #ececec;
         }
+
         /* 選択状態 */
         .btn-toggle.active {
             background: #63946e;
@@ -200,6 +223,7 @@
             color: #fff;
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
         }
+
         /* 結果カード */
         .result-section {
             background:
@@ -213,22 +237,26 @@
             /* 影を少し弱める */
             padding: 14px 16px;
         }
+
         .result-section h3 {
             letter-spacing: 0.08em;
             color: #222;
             margin-bottom: 8px;
             font-size: 13px;
         }
+
         .result-section p {
             font-size: 14px;
             line-height: 1.8;
             color: #222;
         }
+
         /* ローディング */
         .loading {
             text-align: center;
             padding: 40px;
         }
+
         .spinner {
             width: 40px;
             height: 40px;
@@ -238,6 +266,7 @@
             animation: spin 1s linear infinite;
             margin: auto;
         }
+
         .flatpickr-calendar {
             background: #ffffff;
             border-radius: 16px;
@@ -246,15 +275,18 @@
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
             color: #222;
         }
+
         .flatpickr-day.selected {
             background: #3b6892;
             color: white;
         }
+
         @keyframes spin {
             to {
                 transform: rotate(360deg)
             }
         }
+
         #starfield {
             top: 0;
             left: 0;
@@ -265,6 +297,7 @@
             z-index: 2;
             pointer-events: none;
         }
+
         /* ロゴオーバーレイ */
         .logo-overlay {
             position: absolute;
@@ -278,14 +311,17 @@
             pointer-events: none;
             transition: opacity 1.2s ease;
         }
+
         .logo-image {
             max-width: 70%;
             height: auto;
         }
+
         /* フェードイン用 */
         .fade-in {
             opacity: 1 !important;
         }
+
         .fortune-girl {
             opacity: 0;
             transition: opacity 1.2s ease;
@@ -298,6 +334,7 @@
             pointer-events: none;
             z-index: 1;
         }
+
         .progress-bar {
             padding: 10px;
             font-size: 12px;
@@ -307,6 +344,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div id="progressBar" class="progress-bar"></div>
@@ -322,9 +360,12 @@
         const API_BASE = '/api';
         let userState = 'mode_select';
         let formData = {};
-        let divinationResult = null;
         let selectedMode = null;
         let messageQueue = Promise.resolve();
+        let divinationResult = null;        // 既存
+        let productCandidates = [];         // 追加: 商品候補
+        let selectedProductIndex = null;    // 追加: 選択されたインデックス
+
         function setProgress(step, total, label) {
             const el = document.getElementById("progressBar");
             el.innerHTML = `
@@ -712,13 +753,16 @@
                     throw new Error(`HTTP error ${res.status}`);
                 }
                 const json = await res.json();
-                window.diagnosisId = json.diagnosis_id;
                 if (json.error) {
                     clearInterval(thinkingTimer);
                     addMsg(`エラーが発生しました: ${json.error}`, false);
                     clearInputArea();
                     return;
                 }
+                window.diagnosisId = json.diagnosis_id;
+                productCandidates = json.products || [];
+                selectedProductIndex = productCandidates.length > 0 ? 0 : null;
+
                 clearInterval(thinkingTimer);
                 divinationResult = json;
                 displayDivinationResult(json);
@@ -844,7 +888,7 @@
                         false
                     );
                     setInputArea(`
-<button class="btn" onclick="goToProduct()">
+<button class="btn" onclick="showProductCandidates()">
 💎 ブレスレットを見る
 </button>
 `);
@@ -902,6 +946,96 @@
             window.showNextSection = showNextSection;
             await showCurrentSection();
         };
+        function showProductCandidates() {
+            if (!productCandidates || productCandidates.length === 0) {
+                addMsg('関連するブレスレット候補が見つかりませんでした。', false);
+                return;
+            }
+
+            // 初期選択（なければ0番目）
+            if (selectedProductIndex === null && productCandidates.length > 0) {
+                selectedProductIndex = 0;
+            }
+
+            const nameForDisplay = getUserNameForDisplay();
+
+            let html = `
+      <div class="result-section">
+        <h3>💎 ${nameForDisplay}におすすめのブレスレット候補</h3>
+        <p style="font-size:13px;margin:4px 0 10px;">
+          今回の診断結果から導かれたブレスレット候補です。<br>
+          気になるものを1本選んで、詳しいページを開いてください。
+        </p>
+    `;
+
+            productCandidates.forEach((p, idx) => {
+                const isSelected = idx === selectedProductIndex;
+                const label = p.label || p.name || p.slug || `候補${idx + 1}`;
+                const priceText = p.price ? `（${p.price}円）` : '';
+                html += `
+          <button
+            class="btn-toggle ${isSelected ? 'active' : ''}"
+            style="display:block;width:100%;text-align:left;margin:4px 0;"
+            onclick="selectProductCandidate(${idx}, this)"
+          >
+            ${idx + 1}. ${label} ${priceText}
+          </button>
+        `;
+            });
+
+            html += `</div>
+      <button class="btn" onclick="goToSelectedProduct()">
+        🛒 選んだブレスレットのページを開く
+      </button>
+      <button class="btn btn-secondary" onclick="restartFromBeginning()">
+        🔄 もう一度占う
+      </button>
+    `;
+
+            setInputArea(html);
+        }
+
+        function selectProductCandidate(index, el) {
+            selectedProductIndex = index;
+            // 同じinput-area内のボタンからactiveを外す
+            const container = el.parentElement;
+            container.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+        }
+        function goToSelectedProduct() {
+            if (
+                !productCandidates ||
+                productCandidates.length === 0 ||
+                selectedProductIndex === null
+            ) {
+                addMsg('先に、見てみたいブレスレットを1本選んでください。', false);
+                return;
+            }
+
+            const p = productCandidates[selectedProductIndex];
+
+            // slug 優先、なければ ID を ?p=ID で開く
+            let url = '';
+            if (p.slug) {
+                const diagnosisId = window.diagnosisId;
+                url = `https://spicastar.info/atlas/shop/product/${p.slug}/`;
+                if (diagnosisId) {
+                    url += `?d=${diagnosisId}`;
+                }
+            } else if (p.id) {
+                const diagnosisId = window.diagnosisId;
+                url = `https://spicastar.info/atlas/?p=${p.id}`;
+                if (diagnosisId) {
+                    url += `&d=${diagnosisId}`;
+                }
+            } else {
+                addMsg('商品ページの情報が足りませんでした。', false);
+                return;
+            }
+
+            window.location.href = url;
+        }
+
         function selectOrderType(type) {
             if (type === 'custom') {
                 addMsg('オーダーメイド（カスタマイズ）', true);
@@ -1535,4 +1669,5 @@ ${data.product_name || data.bracelet_name || ""}
         }
     </script>
 </body>
+
 </html>
