@@ -170,6 +170,13 @@ MAIN_TO_SUB_MAP = {
     "gray": ["マダガスカル産ローズクォーツ", "シーブルーカルセドニー"],
 }
 
+SELECTABLE_STONES = "\n".join([
+    "- ラピスラズリ",
+    "- カーネリアン・サードニクス",
+    "- マラカイト",
+    "- アメジスト",
+    "- アイリスクォーツ",
+])
 
 AVAILABLE_STONES = "\n".join([
     "- ラピスラズリ",
@@ -205,34 +212,27 @@ ELEMENT_JA = {
 }
 
 SYSTEM_PROMPT = f"""
-あなたは、西洋占星術とクリスタルヒーリングに精通したプロの占い師です。
-ユーザーの悩みに寄り添い、希望を与え、まずは「相性の良い石の種類」を提案してください。
-
 【出力形式の絶対ルール】
 1. JSON形式のみを出力すること。Markdownのコードブロックは不要。
 2. 引用表記（[1]など）は削除すること。
-3. ユーザーの「悩み詳細」を深く読み取り、共感のこもった鑑定を行うこと。
-4. この段階ではブレスレットの個数・配置は決めず、「あなたにマッチする石」だけを提案します。
+
 5. 各セクションは指定文字数を目安に、過不足なく簡潔に書いてください。
 6. 【】のような見出しマークは一切使わず、自然な文章だけで書いてください。
 7. 重要な箇所は**で囲って強調してください。
 8. 全体で日本語で500文字を超えないようにしてください。
 9. 「。」の後には必ず改行を2つ入れて読みやすいようにしてください。
-10. destiny_map では、可能であれば出生時間・出生地も活かして、
-   「生まれた時間帯」や「生まれた土地のイメージ」から感じられる
-   人生の舞台設定や雰囲気にもやさしく触れてください。
 11. 出力する文章はすべて日本語で書き、英単語の星座名やエレメント名
     （Gemini, fire など）は使わず、日本語の表現に言い換えてください。
 
-【石の候補】
-{AVAILABLE_STONES}
+【重要なルール】
 
-※水晶は特別な石です。
-人生の転換期や強い浄化が必要な場合のみ選択してください。
+選べる天然石は必ず以下のいずれか1つにしてください。
+それ以外の石（例：水晶、クリスタル等）は絶対に選ばないでください。
 """
 
 
 def calculate_chart(date, time, lat, lon):
+    swe.set_ephe_path(".")
     dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
     jd = swe.julday(dt.year, dt.month, dt.day, dt.hour + dt.minute / 60)
 
@@ -383,7 +383,7 @@ def build_common_user_context(user_input, chart_data=None, oracle_result=None):
 出生地: {birth.get('place', '不明')}
 
 【石の候補】
-{AVAILABLE_STONES}
+{SELECTABLE_STONES}
 
 ※水晶は特別な石です。
 人生の転換期や強い浄化が必要な場合のみ選択してください。
@@ -443,7 +443,7 @@ def generate_today_fortune(user_input: dict, chart_data=None) -> str:
 あなたは、西洋占星術とクリスタルヒーリングに精通したプロの占い師です。
 生年月日・出生時間・出生地・ホロスコープ情報をもとに、
 今日の流れをやさしく読み解いてください。
-"""
+""" + SYSTEM_PROMPT
 
     user_prompt = create_today_fortune_prompt(user_input, chart_data)
 
@@ -475,6 +475,7 @@ def create_user_prompt(user_input, oracle_result, chart_data=None):
     )
 
     position_str = "正位置" if oracle_result["is_upright"] else "逆位置"
+    names = [c["name"] for c in CRYSTAL_ORACLE_CARDS]
 
     return f"""
 以下の情報をもとに鑑定を行ってください。
@@ -518,7 +519,8 @@ def choose_main_stones(ai_stones):
         for stock_name, info in STOCK_STONES.items():
             if info["role"] != "main":
                 continue
-            if stock_name in name:
+
+            if stock_name == name:
                 matched.append({
                     "name": stock_name,
                     **info,
@@ -536,7 +538,6 @@ def choose_main_stones(ai_stones):
         }]
 
     return matched[:2]
-
 
 def choose_sub_stones(main_stones):
     sub_candidates = []
@@ -556,6 +557,26 @@ def choose_sub_stones(main_stones):
 
     return list(uniq.values())[:2]
 
+def choose_theme(concerns):
+    if not concerns:
+        return "heal"
+
+    if "恋愛" in concerns:
+        return "love"
+
+    if "仕事" in concerns:
+        return "action"
+
+    if "金運" in concerns:
+        return "action"
+
+    if "健康" in concerns:
+        return "heal"
+
+    if "人間関係" in concerns:
+        return "intuition"
+
+    return "heal"
 
 def generate_bracelet_reading(user_input: dict, chart_data=None) -> dict:
     if not client:
@@ -571,7 +592,22 @@ def generate_bracelet_reading(user_input: dict, chart_data=None) -> dict:
         "meaning": meaning
     }
 
-    system_msg = SYSTEM_PROMPT
+    system_msg = f"""あなたは、西洋占星術とクリスタルヒーリングに精通したプロの占い師です。
+ユーザーの悩みに寄り添い、希望を与え、まずは「相性の良い石の種類」を提案してください。
+
+【前提条件】
+3. ユーザーの「悩み詳細」を深く読み取り、共感のこもった鑑定を行うこと。
+4. この段階ではブレスレットの個数・配置は決めず、「あなたにマッチする石」だけを提案します。
+10. destiny_map では、可能であれば出生時間・出生地も活かして、
+   「生まれた時間帯」や「生まれた土地のイメージ」から感じられる
+   人生の舞台設定や雰囲気にもやさしく触れてください。
+   
+【石の候補】
+{SELECTABLE_STONES}
+
+※水晶は特別な石です。
+人生の転換期や強い浄化が必要な場合のみ選択してください。
+""" + SYSTEM_PROMPT
     user_msg = create_user_prompt(user_input, oracle_result, chart_data)
 
     try:
@@ -588,7 +624,7 @@ def generate_bracelet_reading(user_input: dict, chart_data=None) -> dict:
         content = resp.choices[0].message.content.strip()
 
         if "```json" in content:
-            content = content.split("```json").split("```").strip()[1]
+            content = content.split("```json")[1].split("```")[0].strip()
         elif "```" in content:
             content = content.split("```")[1].split("```")[0].strip()
 
@@ -616,7 +652,7 @@ def generate_bracelet_reading(user_input: dict, chart_data=None) -> dict:
         chosen_name = chosen_stone.get("name", "ラピスラズリ")
         chosen_reason = chosen_stone.get(
             "reason",
-            "あなたの運命を導く守護石としてラピスラズリが選ばれました。"
+            f"あなたの運命を導く守護石として{chosen_name}が選ばれました。"
         )
 
         ai_stones = [{
