@@ -1,22 +1,37 @@
+"""Perplexity AI連携モジュール
+
+占い診断のAI鑑定、ホロスコープ計算、石の選定ロジックを提供する。
+Perplexity API（OpenAI互換）を使用して、ユーザーの出生情報と悩みから
+パーソナライズされた鑑定結果を生成する。
+"""
+
 import os
 import json
 import re
 import random
+import logging
 import swisseph as swe
 from datetime import datetime
 from openai import OpenAI
 
+logger = logging.getLogger(__name__)
+
+# ===== API クライアント =====
 
 PERPLEXITY_API_KEY = os.environ.get("PERPLEXITY_API_KEY")
 
-if PERPLEXITY_API_KEY:
-    client = OpenAI(
-        api_key=PERPLEXITY_API_KEY,
-        base_url="https://api.perplexity.ai"
-    )
-else:
-    client = None
 
+def _get_client() -> OpenAI | None:
+    """Perplexity APIクライアントを取得する（遅延初期化）"""
+    if not PERPLEXITY_API_KEY:
+        return None
+    return OpenAI(
+        api_key=PERPLEXITY_API_KEY,
+        base_url="https://api.perplexity.ai",
+    )
+
+
+# ===== 商品マッピング =====
 
 PRODUCT_BY_MAIN_STONE = {
     "ラピスラズリ": {"id": 1203, "slug": "bracelet-lapis-gray"},
@@ -37,129 +52,78 @@ COLOR_PRODUCTS = {
     "シーブルーカルセドニー": {"id": 1201, "slug": "bracelet-shizukanaumi"},
 }
 
+# ===== 星座・エレメント定義 =====
 
 SIGNS = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 ]
 
 ELEMENT_MAP = {
-    "Aries": "fire",
-    "Leo": "fire",
-    "Sagittarius": "fire",
-    "Taurus": "earth",
-    "Virgo": "earth",
-    "Capricorn": "earth",
-    "Gemini": "wind",
-    "Libra": "wind",
-    "Aquarius": "wind",
-    "Cancer": "water",
-    "Scorpio": "water",
-    "Pisces": "water"
+    "Aries": "fire", "Leo": "fire", "Sagittarius": "fire",
+    "Taurus": "earth", "Virgo": "earth", "Capricorn": "earth",
+    "Gemini": "wind", "Libra": "wind", "Aquarius": "wind",
+    "Cancer": "water", "Scorpio": "water", "Pisces": "water",
 }
 
-
-astro_data = {
-    "sun": "Gemini",
-    "moon": "Pisces",
-    "mercury": "Taurus",
-    "venus": "Cancer",
-    "mars": "Leo",
-    "asc": "Cancer",
-    "element_balance": {
-        "fire": 1,
-        "earth": 1,
-        "wind": 2,
-        "water": 2
-    }
+SIGN_JA = {
+    "Aries": "牡羊座", "Taurus": "牡牛座", "Gemini": "双子座",
+    "Cancer": "蟹座", "Leo": "獅子座", "Virgo": "乙女座",
+    "Libra": "天秤座", "Scorpio": "蠍座", "Sagittarius": "射手座",
+    "Capricorn": "山羊座", "Aquarius": "水瓶座", "Pisces": "魚座",
 }
 
+ELEMENT_JA = {
+    "fire": "火", "earth": "地", "wind": "風", "water": "水",
+}
+
+# ===== オラクルカード定義 =====
 
 CRYSTAL_ORACLE_CARDS = [
     {
         "name": "アメジスト",
         "en": "Amethyst crystal",
         "meaning_up": "精神の安定・直感の覚醒",
-        "meaning_rev": "不安・逃避・考えすぎ"
+        "meaning_rev": "不安・逃避・考えすぎ",
     },
     {
         "name": "ラピスラズリ",
         "en": "Lapis Lazuli crystal",
         "meaning_up": "真実・洞察・精神性の成長",
-        "meaning_rev": "自己不信・コミュニケーションの滞り"
+        "meaning_rev": "自己不信・コミュニケーションの滞り",
     },
     {
         "name": "カーネリアン・サードニクス",
         "en": "Carnelian Sardonyx crystal",
         "meaning_up": "行動力・情熱・自己表現",
-        "meaning_rev": "衝動・エネルギーの空回り"
+        "meaning_rev": "衝動・エネルギーの空回り",
     },
     {
         "name": "マラカイト",
         "en": "Malachite crystal",
         "meaning_up": "深い癒やし・感情の解毒",
-        "meaning_rev": "感情の停滞・過去への執着"
+        "meaning_rev": "感情の停滞・過去への執着",
     },
     {
         "name": "アイリスクォーツ",
         "en": "Iris Quartz crystal",
         "meaning_up": "希望・再生・波動の調整",
-        "meaning_rev": "気力不足・未来への不安"
+        "meaning_rev": "気力不足・未来への不安",
     },
 ]
 
+# ===== 在庫石データ =====
 
 STOCK_STONES = {
-    "ラピスラズリ": {
-        "size": 10,
-        "code": "G516-6H785",
-        "role": "main",
-        "color": "blue"
-    },
-    "カーネリアン・サードニクス": {
-        "size": 10,
-        "code": "G1096-H9127",
-        "role": "main",
-        "color": "orange"
-    },
-    "マラカイト": {
-        "size": 10,
-        "code": "N294-MCT10",
-        "role": "main",
-        "color": "green"
-    },
-    "アイリスクォーツ": {
-        "size": 12,
-        "code": "N780-7283M",
-        "role": "main",
-        "color": "clear"
-    },
-    "アメジスト": {
-        "size": 10,
-        "code": "N477-8824X",
-        "role": "main",
-        "color": "purple"
-    },
-    "シーブルーカルセドニー": {
-        "size": 8,
-        "code": "CC359-01RA/#1",
-        "role": "sub",
-        "color": "light_blue"
-    },
-    "マダガスカル産ローズクォーツ": {
-        "size": 8,
-        "code": "N560-V4534",
-        "role": "sub",
-        "color": "pink"
-    },
-    "グレークォーツ": {
-        "size": 10,
-        "code": "G264-3836G",
-        "role": "sub",
-        "color": "gray"
-    },
+    "ラピスラズリ": {"size": 10, "code": "G516-6H785", "role": "main", "color": "blue"},
+    "カーネリアン・サードニクス": {"size": 10, "code": "G1096-H9127", "role": "main", "color": "orange"},
+    "マラカイト": {"size": 10, "code": "N294-MCT10", "role": "main", "color": "green"},
+    "アイリスクォーツ": {"size": 12, "code": "N780-7283M", "role": "main", "color": "clear"},
+    "アメジスト": {"size": 10, "code": "N477-8824X", "role": "main", "color": "purple"},
+    "シーブルーカルセドニー": {"size": 8, "code": "CC359-01RA/#1", "role": "sub", "color": "light_blue"},
+    "マダガスカル産ローズクォーツ": {"size": 8, "code": "N560-V4534", "role": "sub", "color": "pink"},
+    "グレークォーツ": {"size": 10, "code": "G264-3836G", "role": "sub", "color": "gray"},
 }
-
 
 MAIN_TO_SUB_MAP = {
     "purple": ["マダガスカル産ローズクォーツ", "シーブルーカルセドニー", "グレークォーツ"],
@@ -178,44 +142,12 @@ SELECTABLE_STONES = "\n".join([
     "- アイリスクォーツ",
 ])
 
-AVAILABLE_STONES = "\n".join([
-    "- ラピスラズリ",
-    "- カーネリアン・サードニクス",
-    "- マラカイト",
-    "- アメジスト",
-    "- アイリスクォーツ",
-    "- シーブルーカルセドニー",
-    "- マダガスカル産ローズクォーツ",
-    "- グレークォーツ",
-])
-
-SIGN_JA = {
-    "Aries": "牡羊座",
-    "Taurus": "牡牛座",
-    "Gemini": "双子座",
-    "Cancer": "蟹座",
-    "Leo": "獅子座",
-    "Virgo": "乙女座",
-    "Libra": "天秤座",
-    "Scorpio": "蠍座",
-    "Sagittarius": "射手座",
-    "Capricorn": "山羊座",
-    "Aquarius": "水瓶座",
-    "Pisces": "魚座",
-}
-
-ELEMENT_JA = {
-    "fire": "火",
-    "earth": "地",
-    "wind": "風",
-    "water": "水",
-}
+# ===== プロンプト定義 =====
 
 SYSTEM_PROMPT = f"""
 【出力形式の絶対ルール】
 1. JSON形式のみを出力すること。Markdownのコードブロックは不要。
 2. 引用表記（[1]など）は削除すること。
-
 5. 各セクションは指定文字数を目安に、過不足なく簡潔に書いてください。
 6. 【】のような見出しマークは一切使わず、自然な文章だけで書いてください。
 7. 重要な箇所は**で囲って強調してください。
@@ -225,13 +157,15 @@ SYSTEM_PROMPT = f"""
     （Gemini, fire など）は使わず、日本語の表現に言い換えてください。
 
 【重要なルール】
-
 選べる天然石は必ず以下のいずれか1つにしてください。
 それ以外の石（例：水晶、クリスタル等）は絶対に選ばないでください。
 """
 
 
-def calculate_chart(date, time, lat, lon):
+# ===== ホロスコープ計算 =====
+
+def calculate_chart(date: str, time: str, lat: float, lon: float) -> dict:
+    """出生情報から惑星の黄経を計算する"""
     swe.set_ephe_path(".")
     dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
     jd = swe.julday(dt.year, dt.month, dt.day, dt.hour + dt.minute / 60)
@@ -241,7 +175,7 @@ def calculate_chart(date, time, lat, lon):
         "moon": swe.MOON,
         "mercury": swe.MERCURY,
         "venus": swe.VENUS,
-        "mars": swe.MARS
+        "mars": swe.MARS,
     }
 
     positions = {}
@@ -252,11 +186,13 @@ def calculate_chart(date, time, lat, lon):
     return positions
 
 
-def get_sign(deg):
+def get_sign(deg: float) -> str:
+    """黄経（度数）から星座名を返す"""
     return SIGNS[int(deg / 30) % 12]
 
 
-def sign_element_balance(signs):
+def sign_element_balance(signs: dict) -> dict:
+    """星座配分から4エレメントのバランスを算出する"""
     count = {"fire": 0, "earth": 0, "wind": 0, "water": 0}
     for s in signs.values():
         if s in ELEMENT_MAP:
@@ -264,44 +200,34 @@ def sign_element_balance(signs):
     return count
 
 
-def weakest_element(balance):
+def weakest_element(balance: dict) -> str:
+    """最も弱いエレメントを返す"""
     return min(balance, key=balance.get)
 
 
-def choose_products(main_stone, sub_stones):
-    products = []
+# ===== チャートデータ構築 =====
 
-    # 1. メイン石ベース（ラピス／カーネリアン／マラカイト／アメジスト）
-    base = PRODUCT_BY_MAIN_STONE.get(main_stone)
-    if base:
-        products.append(base)
-
-    # 2. サブ石にグレークォーツがあればアイリスシリーズも
-    has_gray = any(s["name"] == "グレークォーツ" for s in sub_stones)
-    if has_gray:
-        limited = LIMITED_PRODUCTS.get(main_stone)
-        if limited:
-            products.append(limited)
-
-    # 3. サブ石にローズ or シーブルーがあれば、色系既製品も
-    for s in sub_stones:
-        color_prod = COLOR_PRODUCTS.get(s["name"])
-        if color_prod and color_prod not in products:
-            products.append(color_prod)
-
-    return products
+# デフォルトのチャートデータ（出生情報が不明な場合のフォールバック）
+_DEFAULT_CHART = {
+    "sun": "Gemini", "moon": "Pisces", "asc": "Cancer",
+    "mercury": "Taurus", "venus": "Cancer", "mars": "Leo",
+    "element_balance": {"fire": 1, "earth": 1, "wind": 2, "water": 2},
+}
 
 
+def build_chart_data(user_input: dict = None, chart_data: dict = None) -> dict:
+    """ホロスコープチャートデータを構築する
 
-def build_chart_data(user_input=None, chart_data=None):
+    実際のチャート計算結果があればそれを使い、なければデフォルト値で補完する。
+    """
     base = chart_data or {
-        "sun": astro_data.get("sun"),
-        "moon": astro_data.get("moon"),
-        "asc": astro_data.get("asc"),
-        "mercury": astro_data.get("mercury"),
-        "venus": astro_data.get("venus"),
-        "mars": astro_data.get("mars"),
-        "element_balance": astro_data.get("element_balance", {}),
+        "sun": _DEFAULT_CHART["sun"],
+        "moon": _DEFAULT_CHART["moon"],
+        "asc": _DEFAULT_CHART["asc"],
+        "mercury": _DEFAULT_CHART["mercury"],
+        "venus": _DEFAULT_CHART["venus"],
+        "mars": _DEFAULT_CHART["mars"],
+        "element_balance": _DEFAULT_CHART.get("element_balance", {}),
     }
 
     balance = base.get("element_balance", {})
@@ -313,10 +239,7 @@ def build_chart_data(user_input=None, chart_data=None):
     element_lack = base.get("element_lack")
     if not element_lack:
         element_lack = weakest_element({
-            "fire": fire,
-            "earth": earth,
-            "wind": wind,
-            "water": water,
+            "fire": fire, "earth": earth, "wind": wind, "water": water,
         })
 
     sun = base.get("sun", "Gemini")
@@ -327,19 +250,10 @@ def build_chart_data(user_input=None, chart_data=None):
     mars = base.get("mars", "Leo")
 
     return {
-        # 内部用（英語）
-        "sun": sun,
-        "moon": moon,
-        "asc": asc,
-        "mercury": mercury,
-        "venus": venus,
-        "mars": mars,
-        "fire": fire,
-        "earth": earth,
-        "wind": wind,
-        "water": water,
+        "sun": sun, "moon": moon, "asc": asc,
+        "mercury": mercury, "venus": venus, "mars": mars,
+        "fire": fire, "earth": earth, "wind": wind, "water": water,
         "element_lack": element_lack,
-        # 表示用（日本語）
         "sun_ja": SIGN_JA.get(sun, sun),
         "moon_ja": SIGN_JA.get(moon, moon),
         "asc_ja": SIGN_JA.get(asc, asc),
@@ -350,8 +264,119 @@ def build_chart_data(user_input=None, chart_data=None):
     }
 
 
+# ===== 商品選定 =====
 
-def build_common_user_context(user_input, chart_data=None, oracle_result=None):
+def choose_products(main_stone: str, sub_stones: list) -> list:
+    """メイン石とサブ石から購入候補の商品リストを生成する"""
+    products = []
+
+    base = PRODUCT_BY_MAIN_STONE.get(main_stone)
+    if base:
+        products.append(base)
+
+    # サブ石にグレークォーツがあればアイリスシリーズも追加
+    has_gray = any(s["name"] == "グレークォーツ" for s in sub_stones)
+    if has_gray:
+        limited = LIMITED_PRODUCTS.get(main_stone)
+        if limited:
+            products.append(limited)
+
+    # サブ石にローズ or シーブルーがあれば色系商品も追加
+    for s in sub_stones:
+        color_prod = COLOR_PRODUCTS.get(s["name"])
+        if color_prod and color_prod not in products:
+            products.append(color_prod)
+
+    return products
+
+
+# ===== テーマ選定 =====
+
+def choose_theme(concerns: list) -> str:
+    """悩みカテゴリからテーマを決定する"""
+    if not concerns:
+        return "heal"
+
+    concern_theme_map = {
+        "恋愛": "love",
+        "仕事": "action",
+        "金運": "action",
+        "健康": "heal",
+        "人間関係": "intuition",
+    }
+
+    for concern, theme in concern_theme_map.items():
+        if concern in concerns:
+            return theme
+
+    return "heal"
+
+
+# ===== 石選定 =====
+
+def choose_main_stones(ai_stones: list) -> list:
+    """AIが選んだ石を在庫データと照合し、メイン石リストを返す"""
+    matched = []
+    for s in ai_stones:
+        name = s.get("name", "")
+        if name in STOCK_STONES and STOCK_STONES[name]["role"] == "main":
+            matched.append({
+                "name": name,
+                **STOCK_STONES[name],
+                "reason": s.get("reason", ""),
+            })
+
+    if not matched:
+        fallback_name = "ラピスラズリ"
+        info = STOCK_STONES[fallback_name]
+        matched = [{
+            "name": fallback_name,
+            **info,
+            "reason": "運命と真実を導く守護石としてラピスラズリが選ばれました。",
+        }]
+
+    return matched[:2]
+
+
+def choose_sub_stones(main_stones: list) -> list:
+    """メイン石の色相性に基づいてサブ石を選定する"""
+    seen = {}
+    for m in main_stones:
+        color = m.get("color", "")
+        for sub_name in MAIN_TO_SUB_MAP.get(color, []):
+            if sub_name not in seen:
+                info = STOCK_STONES[sub_name]
+                seen[sub_name] = {
+                    "name": sub_name,
+                    **info,
+                    "reason": f"{m['name']}との色合いの相性を整えるために選びました。",
+                }
+
+    return list(seen.values())[:2]
+
+
+# ===== AIレスポンスのパース =====
+
+def _strip_code_block(content: str) -> str:
+    """AIレスポンスからMarkdownコードブロックを除去する"""
+    if "```json" in content:
+        content = content.split("```json")[1].split("```")[0].strip()
+    elif "```" in content:
+        content = content.split("```")[1].split("```")[0].strip()
+    return content
+
+
+def _clean_citations(content: str) -> str:
+    """引用表記 [1] [2] などを除去する"""
+    return re.sub(r"\[\d+\]", "", content)
+
+
+# ===== プロンプト構築 =====
+
+def build_common_user_context(
+    user_input: dict, chart_data: dict = None, oracle_result: dict = None
+) -> str:
+    """共通のユーザー情報コンテキストを構築する"""
     birth = user_input.get("birth", {})
     concerns = user_input.get("concerns", [])
     problem_text = user_input.get("problem", "")
@@ -362,13 +387,12 @@ def build_common_user_context(user_input, chart_data=None, oracle_result=None):
     oracle_text = ""
     if oracle_result:
         position_str = "正位置" if oracle_result["is_upright"] else "逆位置"
-        oracle_text = f"""
-
-【オラクルカード結果】
-カード: {oracle_result['card']['name']}
-状態: {position_str}
-意味: {oracle_result['meaning']}
-"""
+        oracle_text = (
+            f"\n\n【オラクルカード結果】\n"
+            f"カード: {oracle_result['card']['name']}\n"
+            f"状態: {position_str}\n"
+            f"意味: {oracle_result['meaning']}"
+        )
 
     return f"""
 【ユーザー情報】
@@ -396,24 +420,20 @@ ASC: {cd['asc_ja']}
 金星: {cd['venus_ja']}
 火星: {cd['mars_ja']}
 
-
 エレメントバランス
-火:{cd['fire']}
-地:{cd['earth']}
-風:{cd['wind']}
-水:{cd['water']}
+火:{cd['fire']}  地:{cd['earth']}  風:{cd['wind']}  水:{cd['water']}
 
-
-不足エレメント
-{cd['element_lack_ja']}
+不足エレメント: {cd['element_lack_ja']}
 {oracle_text}
 """
 
-def create_today_fortune_prompt(user_input, chart_data=None):
+
+def create_today_fortune_prompt(user_input: dict, chart_data: dict = None) -> str:
+    """今日の運勢用プロンプトを構築する"""
     common_context = build_common_user_context(
         user_input=user_input,
         chart_data=chart_data,
-        oracle_result=None
+        oracle_result=None,
     )
 
     return f"""
@@ -435,47 +455,17 @@ def create_today_fortune_prompt(user_input, chart_data=None):
 """
 
 
-def generate_today_fortune(user_input: dict, chart_data=None) -> str:
-    if not client:
-        return "今日は、自分のペースを大切に過ごすと良さそうな日です。"
-
-    system_prompt = """
-あなたは、西洋占星術とクリスタルヒーリングに精通したプロの占い師です。
-生年月日・出生時間・出生地・ホロスコープ情報をもとに、
-今日の流れをやさしく読み解いてください。
-""" + SYSTEM_PROMPT
-
-    user_prompt = create_today_fortune_prompt(user_input, chart_data)
-
-    resp = client.chat.completions.create(
-        model="sonar-pro",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.7,
-        max_tokens=500,
-    )
-
-    content = resp.choices[0].message.content.strip()
-
-    if "```json" in content:
-        content = content.split("```json").split("```").strip()[1]
-    elif "```" in content:
-        content = content.split("```")[1].split("```")[0].strip()
-
-    return content
-
-
-def create_user_prompt(user_input, oracle_result, chart_data=None):
+def create_user_prompt(
+    user_input: dict, oracle_result: dict, chart_data: dict = None
+) -> str:
+    """メイン診断用のユーザープロンプトを構築する"""
     common_context = build_common_user_context(
         user_input=user_input,
         chart_data=chart_data,
-        oracle_result=oracle_result
+        oracle_result=oracle_result,
     )
 
     position_str = "正位置" if oracle_result["is_upright"] else "逆位置"
-    names = [c["name"] for c in CRYSTAL_ORACLE_CARDS]
 
     return f"""
 以下の情報をもとに鑑定を行ってください。
@@ -499,12 +489,12 @@ def create_user_prompt(user_input, oracle_result, chart_data=None):
 "element_diagnosis": "4エレメントのバランスとアドバイスを80文字程度で説明。",
 "oracle_message": "引いたカード「{oracle_result['card']['name']}」の{position_str}のメッセージを100文字程度で説明。",
 "bracelet_proposal": "ブレスレットがどのような願いをサポートするか80文字程度で説明。",
-"stone_support_message": "ユーザーの悩みと人生テーマに対して石がどのようにサポートするか120文字程度で説明。必ず日本語のみで書き、英単語の星座名やエレメント名（Gemini, fire など）は使わないこと。",
+"stone_support_message": "ユーザーの悩みと人生テーマに対して石がどのようにサポートするか120文字程度で説明。必ず日本語のみで書き、英単語の星座名やエレメント名は使わないこと。",
 "chosen_stone": {{
   "name": "選ばれた石の名前",
   "reason": "ホロスコープ・悩み・カードの観点からその石が必要な理由"
 }},
-"element": "ユーザーに必要なエレメント（火・地・風・水のいずれか。値は fire/earth/wind/water の英単語で返す）",
+"element": "ユーザーに必要なエレメント（fire/earth/wind/water）",
 "theme": "テーマ (love/heal/action/intuition)"
 }}
 
@@ -512,76 +502,59 @@ def create_user_prompt(user_input, oracle_result, chart_data=None):
 """
 
 
-def choose_main_stones(ai_stones):
-    matched = []
-    for s in ai_stones:
-        name = s.get("name", "")
-        for stock_name, info in STOCK_STONES.items():
-            if info["role"] != "main":
-                continue
+# ===== 今日の運勢生成 =====
 
-            if stock_name == name:
-                matched.append({
-                    "name": stock_name,
-                    **info,
-                    "reason": s.get("reason", "")
-                })
-                break
+def generate_today_fortune(user_input: dict, chart_data: dict = None) -> str:
+    """今日の運勢テキストを生成する
 
-    if not matched:
-        fallback_name = "ラピスラズリ"
-        info = STOCK_STONES[fallback_name]
-        matched = [{
-            "name": fallback_name,
-            **info,
-            "reason": "運命と真実を導く守護石としてラピスラズリが選ばれました。"
-        }]
+    APIが利用できない場合はフォールバックメッセージを返す。
+    """
+    client = _get_client()
+    if not client:
+        return "今日は、自分のペースを大切に過ごすと良さそうな日です。"
 
-    return matched[:2]
+    system_prompt = (
+        "あなたは、西洋占星術とクリスタルヒーリングに精通したプロの占い師です。\n"
+        "生年月日・出生時間・出生地・ホロスコープ情報をもとに、\n"
+        "今日の流れをやさしく読み解いてください。\n"
+    ) + SYSTEM_PROMPT
 
-def choose_sub_stones(main_stones):
-    sub_candidates = []
-    for m in main_stones:
-        color = m["color"]
-        for sub_name in MAIN_TO_SUB_MAP.get(color, []):
-            info = STOCK_STONES[sub_name]
-            sub_candidates.append({
-                "name": sub_name,
-                **info,
-                "reason": f"{m['name']}との色合いの相性を整えるために選びました。"
-            })
+    user_prompt = create_today_fortune_prompt(user_input, chart_data)
 
-    uniq = {}
-    for s in sub_candidates:
-        uniq[s["name"]] = s
+    try:
+        resp = client.chat.completions.create(
+            model="sonar-pro",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.7,
+            max_tokens=500,
+        )
 
-    return list(uniq.values())[:2]
+        content = resp.choices[0].message.content.strip()
+        content = _strip_code_block(content)
+        content = _clean_citations(content)
+        return content
 
-def choose_theme(concerns):
-    if not concerns:
-        return "heal"
+    except Exception as e:
+        logger.exception("今日の運勢生成でエラー")
+        return "今日は、自分のペースを大切に過ごすと良さそうな日です。"
 
-    if "恋愛" in concerns:
-        return "love"
 
-    if "仕事" in concerns:
-        return "action"
+# ===== メイン診断生成 =====
 
-    if "金運" in concerns:
-        return "action"
+def generate_bracelet_reading(user_input: dict, chart_data: dict = None) -> dict:
+    """AIを使ったブレスレット診断を実行する
 
-    if "健康" in concerns:
-        return "heal"
-
-    if "人間関係" in concerns:
-        return "intuition"
-
-    return "heal"
-
-def generate_bracelet_reading(user_input: dict, chart_data=None) -> dict:
+    オラクルカードをランダムに引き、ユーザーの情報と合わせて
+    AIに鑑定を依頼し、石の選定まで行う。
+    """
+    client = _get_client()
     if not client:
         return {"error": "Perplexity API Key not configured"}
 
+    # オラクルカードを引く
     card = random.choice(CRYSTAL_ORACLE_CARDS)
     is_upright = random.choice([True, False])
     meaning = card["meaning_up"] if is_upright else card["meaning_rev"]
@@ -589,25 +562,23 @@ def generate_bracelet_reading(user_input: dict, chart_data=None) -> dict:
     oracle_result = {
         "card": card,
         "is_upright": is_upright,
-        "meaning": meaning
+        "meaning": meaning,
     }
 
-    system_msg = f"""あなたは、西洋占星術とクリスタルヒーリングに精通したプロの占い師です。
-ユーザーの悩みに寄り添い、希望を与え、まずは「相性の良い石の種類」を提案してください。
+    system_msg = (
+        "あなたは、西洋占星術とクリスタルヒーリングに精通したプロの占い師です。\n"
+        "ユーザーの悩みに寄り添い、希望を与え、「相性の良い石の種類」を提案してください。\n\n"
+        "【前提条件】\n"
+        "3. ユーザーの「悩み詳細」を深く読み取り、共感のこもった鑑定を行うこと。\n"
+        "4. この段階ではブレスレットの個数・配置は決めず、「あなたにマッチする石」だけを提案します。\n"
+        "10. destiny_map では、可能であれば出生時間・出生地も活かして、\n"
+        "   「生まれた時間帯」や「生まれた土地のイメージ」から感じられる\n"
+        "   人生の舞台設定や雰囲気にもやさしく触れてください。\n\n"
+        f"【石の候補】\n{SELECTABLE_STONES}\n\n"
+        "※水晶は特別な石です。\n"
+        "人生の転換期や強い浄化が必要な場合のみ選択してください。\n"
+    ) + SYSTEM_PROMPT
 
-【前提条件】
-3. ユーザーの「悩み詳細」を深く読み取り、共感のこもった鑑定を行うこと。
-4. この段階ではブレスレットの個数・配置は決めず、「あなたにマッチする石」だけを提案します。
-10. destiny_map では、可能であれば出生時間・出生地も活かして、
-   「生まれた時間帯」や「生まれた土地のイメージ」から感じられる
-   人生の舞台設定や雰囲気にもやさしく触れてください。
-   
-【石の候補】
-{SELECTABLE_STONES}
-
-※水晶は特別な石です。
-人生の転換期や強い浄化が必要な場合のみ選択してください。
-""" + SYSTEM_PROMPT
     user_msg = create_user_prompt(user_input, oracle_result, chart_data)
 
     try:
@@ -618,26 +589,23 @@ def generate_bracelet_reading(user_input: dict, chart_data=None) -> dict:
                 {"role": "user", "content": user_msg},
             ],
             temperature=0.7,
-            max_tokens=3000
+            max_tokens=3000,
         )
 
         content = resp.choices[0].message.content.strip()
-
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
-
-        content = re.sub(r"\[\d+\]", "", content)
+        content = _strip_code_block(content)
+        content = _clean_citations(content)
 
         try:
             result = json.loads(content)
         except json.JSONDecodeError:
+            logger.warning(f"AIレスポンスのJSONパースに失敗: {content[:200]}")
             result = {}
 
         if not isinstance(result, dict):
             result = {"destiny_map": str(result)}
 
+        # デフォルト値の設定
         result.setdefault("destiny_map", "")
         result.setdefault("past", "")
         result.setdefault("present_future", "")
@@ -648,17 +616,15 @@ def generate_bracelet_reading(user_input: dict, chart_data=None) -> dict:
         result.setdefault("element", "water")
         result.setdefault("theme", choose_theme(user_input.get("concerns", [])))
 
+        # 選ばれた石の処理
         chosen_stone = result.get("chosen_stone") or {}
         chosen_name = chosen_stone.get("name", "ラピスラズリ")
         chosen_reason = chosen_stone.get(
             "reason",
-            f"あなたの運命を導く守護石として{chosen_name}が選ばれました。"
+            f"あなたの運命を導く守護石として{chosen_name}が選ばれました。",
         )
 
-        ai_stones = [{
-            "name": chosen_name,
-            "reason": chosen_reason
-        }]
+        ai_stones = [{"name": chosen_name, "reason": chosen_reason}]
 
         main_stones = choose_main_stones(ai_stones)
         sub_stones = choose_sub_stones(main_stones)
@@ -667,33 +633,40 @@ def generate_bracelet_reading(user_input: dict, chart_data=None) -> dict:
         result["stones_main"] = main_stones
         result["stones_sub"] = sub_stones
 
+        # エレメント情報
         chart_info = build_chart_data(user_input, chart_data)
         result["element_lack"] = chart_info["element_lack"]
 
+        # オラクルカード情報
         result["oracle_card"] = {
             "name": card["name"],
             "meaning": meaning,
             "is_upright": is_upright,
-            "image_url": f"https://image.pollinations.ai/prompt/"
-                         f"{('oracle card art of ' + card['en'] + ', mystical glowing gemstone, divine light, intricate golden border, fantasy art, tarot style, high quality, 8k').replace(' ', '%20')}"
-                         f"?width=400&height=600&seed={random.randint(0, 9999)}"
+            "image_url": (
+                "https://image.pollinations.ai/prompt/"
+                + (
+                    "oracle card art of " + card["en"]
+                    + ", mystical glowing gemstone, divine light, "
+                    "intricate golden border, fantasy art, tarot style, high quality, 8k"
+                ).replace(" ", "%20")
+                + f"?width=400&height=600&seed={random.randint(0, 9999)}"
+            ),
         }
 
+        # 画像プロンプト
         stone_names_ja = ", ".join([s["name"] for s in result["stones_for_user"]])
-        result["image_prompt"] = f"""
-luxury gemstone bracelet,
-{stone_names_ja},
-japanese spiritual jewelry,
-white background,
-product photography,
-high quality
-""".strip()
+        result["image_prompt"] = (
+            f"luxury gemstone bracelet, {stone_names_ja}, "
+            "japanese spiritual jewelry, white background, "
+            "product photography, high quality"
+        )
 
+        # 商品候補
         main = result["stones_main"][0]["name"]
         result["products"] = choose_products(main, result["stones_sub"])
 
         return result
 
     except Exception as e:
-        print(f"Perplexity API Error: {e}")
+        logger.exception("Perplexity API エラー")
         return {"error": str(e)}
