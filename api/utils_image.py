@@ -7,6 +7,7 @@ Pollinations.ai の無料画像生成APIを使用。
 import hashlib
 import logging
 import random
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ def generate_oracle_card_url(card_name_en: str, seed_key: str = "") -> str:
 
     return (
         "https://image.pollinations.ai/prompt/"
-        + prompt.replace(" ", "%20")
+        + quote(prompt, safe='')
         + f"?width=400&height=600&seed={seed}&nologo=true"
     )
 
@@ -101,7 +102,7 @@ def generate_destiny_scene_url(
 
     return (
         "https://image.pollinations.ai/prompt/"
-        + prompt.replace(" ", "%20")
+        + quote(prompt, safe='')
         + f"?width=600&height=400&seed={seed}&nologo=true"
     )
 
@@ -144,7 +145,7 @@ def generate_element_balance_url(
 
     return (
         "https://image.pollinations.ai/prompt/"
-        + prompt.replace(" ", "%20")
+        + quote(prompt, safe='')
         + f"?width=600&height=400&seed={seed}&nologo=true"
     )
 
@@ -176,6 +177,6 @@ def generate_stone_bracelet_url(
 
     return (
         "https://image.pollinations.ai/prompt/"
-        + prompt.replace(" ", "%20")
+        + quote(prompt, safe='')
         + f"?width=600&height=400&seed={seed}&nologo=true"
     )

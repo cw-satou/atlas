@@ -845,9 +845,15 @@ ${fortuneText}`, false);
     const cardHtml = `
     <div class="msg bot">
       <div class="result-section" style="text-align:center;">
-        <h3>\u30AA\u30E9\u30AF\u30EB\u30AB\u30FC\u30C9</h3>
-        <img src="${card.image_url}" style="width:200px;border-radius:12px;margin:12px 0;">
-        <p>${card.name} ${card.is_upright ? "\uFF08\u6B63\u4F4D\u7F6E\uFF09" : "\uFF08\u9006\u4F4D\u7F6E\uFF09"}</p>
+        <h3>\u{1F3B4} \u30AA\u30E9\u30AF\u30EB\u30AB\u30FC\u30C9</h3>
+        <img src="${card.image_url}"
+          class="section-image"
+          style="width:200px;margin:12px auto;display:block;"
+          onload="this.classList.add('loaded')"
+          onerror="this.style.display='none'">
+        <p style="font-size:16px;font-weight:bold;margin-top:8px;">
+          ${card.name} ${card.is_upright ? "\uFF08\u6B63\u4F4D\u7F6E\uFF09" : "\uFF08\u9006\u4F4D\u7F6E\uFF09"}
+        </p>
       </div>
     </div>
   `;
@@ -917,6 +923,13 @@ ${result.daily_advice.split(",").map((a) => `\u30FB ${a.trim()}`).join("\n")}`);
         }
         await addMsg("\u3053\u3053\u307E\u3067\u306E\u6D41\u308C\u304B\u3089\u3001\u4ECA\u306E\u3042\u306A\u305F\u3092\u6574\u3048\u308B\u77F3\u304C\u898B\u3048\u3066\u304D\u307E\u3057\u305F\u3002", false);
         await addMsg(`\u4ECA\u56DE\u306E\u8A3A\u65AD\u3067\u3042\u306A\u305F\u306E\u8EF8\u3068\u306A\u308B\u77F3\u306F **${stoneName}** \u3067\u3059\u3002`, false);
+        await addMsg(
+          `\u3053\u306E\u77F3\u306F\u3001\u3042\u306A\u305F\u306E\u661F\u306E\u914D\u7F6E\u3068\u4ECA\u306E\u5FC3\u306E\u6CE2\u9577\u304B\u3089\u5C0E\u304D\u51FA\u3055\u308C\u305F\u3082\u306E\u3067\u3059\u3002
+
+\u3075\u3068\u8FF7\u3063\u305F\u3068\u304D\u3001\u5FC3\u304C\u63FA\u308C\u305F\u3068\u304D\u3001\u305D\u3063\u3068\u624B\u9996\u306B\u89E6\u308C\u3066\u307F\u3066\u304F\u3060\u3055\u3044\u3002
+**${stoneName}**\u306E\u9759\u304B\u306A\u30A8\u30CD\u30EB\u30AE\u30FC\u304C\u3001\u3042\u306A\u305F\u672C\u6765\u306E\u30EA\u30BA\u30E0\u3092\u601D\u3044\u51FA\u3055\u305B\u3066\u304F\u308C\u308B\u306F\u305A\u3067\u3059\u3002`,
+          false
+        );
         await addMsg("\u3082\u3057\u3053\u306E\u77F3\u305F\u3061\u3068\u4E00\u7DD2\u306B\u6B69\u3044\u3066\u307F\u305F\u3044\u3068\u611F\u3058\u305F\u306A\u3089\u3001\u3042\u306A\u305F\u306E\u305F\u3081\u306E\u30D6\u30EC\u30B9\u30EC\u30C3\u30C8\u3068\u3057\u3066\u5F62\u306B\u3057\u3066\u307F\u307E\u3057\u3087\u3046\u3002", false);
         setInputArea(`
         <button class="btn" onclick="showProductCandidates()">\u{1F48E} \u8A3A\u65AD\u7D50\u679C\u304B\u3089\u30D6\u30EC\u30B9\u30EC\u30C3\u30C8\u5019\u88DC\u3092\u898B\u308B</button>
@@ -934,15 +947,15 @@ ${result.daily_advice.split(",").map((a) => `\u30FB ${a.trim()}`).join("\n")}`);
       inner.className = "result-section";
       const h3 = document.createElement("h3");
       h3.textContent = sec.title;
+      inner.appendChild(h3);
       if (sec.image) {
         const img = document.createElement("img");
         img.src = sec.image;
-        img.style.cssText = "width:100%;border-radius:12px;margin:8px 0;";
+        img.className = "section-image";
         img.alt = sec.title;
-        inner.appendChild(h3);
+        img.onload = () => img.classList.add("loaded");
+        img.onerror = () => img.style.display = "none";
         inner.appendChild(img);
-      } else {
-        inner.appendChild(h3);
       }
       const p = document.createElement("p");
       inner.appendChild(p);

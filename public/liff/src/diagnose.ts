@@ -95,9 +95,15 @@ async function showOracleCard(card: { image_url: string; name: string; is_uprigh
   const cardHtml = `
     <div class="msg bot">
       <div class="result-section" style="text-align:center;">
-        <h3>オラクルカード</h3>
-        <img src="${card.image_url}" style="width:200px;border-radius:12px;margin:12px 0;">
-        <p>${card.name} ${card.is_upright ? '（正位置）' : '（逆位置）'}</p>
+        <h3>🎴 オラクルカード</h3>
+        <img src="${card.image_url}"
+          class="section-image"
+          style="width:200px;margin:12px auto;display:block;"
+          onload="this.classList.add('loaded')"
+          onerror="this.style.display='none'">
+        <p style="font-size:16px;font-weight:bold;margin-top:8px;">
+          ${card.name} ${card.is_upright ? '（正位置）' : '（逆位置）'}
+        </p>
       </div>
     </div>
   `;
@@ -178,6 +184,12 @@ async function displayDivinationResult(result: Record<string, unknown>): Promise
 
       await addMsg('ここまでの流れから、今のあなたを整える石が見えてきました。', false);
       await addMsg(`今回の診断であなたの軸となる石は **${stoneName}** です。`, false);
+      await addMsg(
+        `この石は、あなたの星の配置と今の心の波長から導き出されたものです。\n\n`
+        + `ふと迷ったとき、心が揺れたとき、そっと手首に触れてみてください。\n`
+        + `**${stoneName}**の静かなエネルギーが、あなた本来のリズムを思い出させてくれるはずです。`,
+        false
+      );
       await addMsg('もしこの石たちと一緒に歩いてみたいと感じたなら、あなたのためのブレスレットとして形にしてみましょう。', false);
       setInputArea(`
         <button class="btn" onclick="showProductCandidates()">💎 診断結果からブレスレット候補を見る</button>
@@ -199,15 +211,15 @@ async function displayDivinationResult(result: Record<string, unknown>): Promise
     h3.textContent = sec.title;
 
     // セクションに対応するイメージ画像があれば表示
+    inner.appendChild(h3);
     if (sec.image) {
       const img = document.createElement('img');
       img.src = sec.image;
-      img.style.cssText = 'width:100%;border-radius:12px;margin:8px 0;';
+      img.className = 'section-image';
       img.alt = sec.title;
-      inner.appendChild(h3);
+      img.onload = () => img.classList.add('loaded');
+      img.onerror = () => img.style.display = 'none';
       inner.appendChild(img);
-    } else {
-      inner.appendChild(h3);
     }
 
     const p = document.createElement('p');
