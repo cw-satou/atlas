@@ -30,18 +30,27 @@ interface Recommendation {
 function buildScoreBar(score: number, breakdown?: { element: number; aura: number; theme: number; worry: number }): string {
   const pct = Math.min(100, Math.round(score));
   const breakdownHtml = breakdown ? `
-    <div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;">
+    <div style="margin-top:10px;border-top:1px solid #e8dcc8;padding-top:8px;">
+      <div style="font-size:11px;color:#888;margin-bottom:6px;">内訳</div>
       ${[
-        ['星座', breakdown.element],
-        ['オーラ', breakdown.aura],
-        ['テーマ', breakdown.theme],
-        ['悩み', breakdown.worry],
-      ].map(([label, val]) => `
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;">
-          <span>${label}</span>
-          <span style="color:#b8860b;font-weight:600;">${Math.round(val as number)}%</span>
-        </div>
-      `).join('')}
+        ['星座相性', breakdown.element, '#c8860b'],
+        ['オーラ', breakdown.aura, '#9b6b3a'],
+        ['テーマ', breakdown.theme, '#7a9e4e'],
+        ['悩み', breakdown.worry, '#6b5b9e'],
+      ].map(([label, val, color]) => {
+        const v = Math.min(100, Math.round(val as number));
+        return `
+          <div style="margin-bottom:5px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+              <span style="font-size:11px;color:#666;">${label}</span>
+              <span style="font-size:11px;font-weight:600;color:${color};">${v}%</span>
+            </div>
+            <div style="background:#e8e8e8;border-radius:4px;height:5px;overflow:hidden;">
+              <div style="width:${v}%;height:100%;background:${color};border-radius:4px;transition:width .6s ease;"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
   ` : '';
   return `

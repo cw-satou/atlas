@@ -935,8 +935,8 @@ ${fortuneText}`, false);
     const oracleCard = result.oracle_card;
     async function showGroup1() {
       await addMsg(`\u661F\u306E\u914D\u7F6E\u3068\u30A8\u30EC\u30E1\u30F3\u30C8\u306E\u6D41\u308C\u3092\u3082\u3068\u306B\u3001${nameForDisplay}\u306E\u4ECA\u3092\u8AAD\u307F\u89E3\u3044\u3066\u3044\u304D\u307E\u3059\u3002`, false);
-      if (result.destiny_map) {
-        await appendSection(chatBox, "\u2728 \u661F\u306E\u5730\u56F3", result.destiny_map, images.destiny_scene);
+      if (result.destiny_map || images.destiny_scene) {
+        await appendSection(chatBox, "\u2728 \u661F\u306E\u5730\u56F3", result.destiny_map || "", images.destiny_scene);
       }
       if (result.past) {
         await appendSection(chatBox, "\u{1F319} \u3053\u308C\u307E\u3067\u306E\u6D41\u308C", result.past);
@@ -978,7 +978,7 @@ ${fortuneText}`, false);
     async function showGroup3() {
       await addMsg("\u4ECA\u306E\u3042\u306A\u305F\u3092\u6574\u3048\u308B\u77F3\u3068\u3001\u305D\u306E\u30B5\u30DD\u30FC\u30C8\u3092\u304A\u4F1D\u3048\u3057\u307E\u3059\u3002", false);
       if (result.bracelet_proposal) {
-        await appendSection(chatBox, "\u{1F48E} \u3042\u306A\u305F\u306B\u9078\u3070\u308C\u305F\u77F3", result.bracelet_proposal, images.bracelet);
+        await appendSection(chatBox, "\u{1F48E} \u3042\u306A\u305F\u306B\u9078\u3070\u308C\u305F\u77F3", result.bracelet_proposal, images.beads);
       }
       if (result.stone_support_message) {
         await appendSection(chatBox, "\u{1F490} \u77F3\u304B\u3089\u306E\u30E1\u30C3\u30BB\u30FC\u30B8", result.stone_support_message);
@@ -1021,8 +1021,32 @@ ${adviceList}`);
   }
 
   // public/liff/src/products.ts
-  function buildScoreBar(score) {
+  function buildScoreBar(score, breakdown) {
     const pct = Math.min(100, Math.round(score));
+    const breakdownHtml = breakdown ? `
+    <div style="margin-top:10px;border-top:1px solid #e8dcc8;padding-top:8px;">
+      <div style="font-size:11px;color:#888;margin-bottom:6px;">\u5185\u8A33</div>
+      ${[
+      ["\u661F\u5EA7\u76F8\u6027", breakdown.element, "#c8860b"],
+      ["\u30AA\u30FC\u30E9", breakdown.aura, "#9b6b3a"],
+      ["\u30C6\u30FC\u30DE", breakdown.theme, "#7a9e4e"],
+      ["\u60A9\u307F", breakdown.worry, "#6b5b9e"]
+    ].map(([label, val, color]) => {
+      const v = Math.min(100, Math.round(val));
+      return `
+          <div style="margin-bottom:5px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+              <span style="font-size:11px;color:#666;">${label}</span>
+              <span style="font-size:11px;font-weight:600;color:${color};">${v}%</span>
+            </div>
+            <div style="background:#e8e8e8;border-radius:4px;height:5px;overflow:hidden;">
+              <div style="width:${v}%;height:100%;background:${color};border-radius:4px;transition:width .6s ease;"></div>
+            </div>
+          </div>
+        `;
+    }).join("")}
+    </div>
+  ` : "";
     return `
     <div style="margin:6px 0 2px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
@@ -1032,6 +1056,7 @@ ${adviceList}`);
       <div style="background:#e8e8e8;border-radius:6px;height:6px;overflow:hidden;">
         <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#b8860b,#daa520);border-radius:6px;transition:width .6s ease;"></div>
       </div>
+      ${breakdownHtml}
     </div>
   `;
   }
@@ -1062,7 +1087,7 @@ ${adviceList}`);
       ${imageHtml}
       <p style="font-size:15px;font-weight:600;color:#222;margin:4px 0 6px;line-height:1.5;">${rec.product_name || rec.sku || `\u5019\u88DC${rank}`}</p>
       <p style="font-size:13px;color:#666;margin:0 0 6px;">\u4F7F\u7528\u77F3\uFF1A${stonesText}</p>
-      ${buildScoreBar(rec.score || 0)}
+      ${buildScoreBar(rec.score || 0, rec.score_breakdown)}
       <p style="font-size:13px;color:#444;margin-top:8px;line-height:1.6;">${reason}</p>
     </div>
   `;
