@@ -150,7 +150,38 @@ function typeIntoElement(element: HTMLElement, rawText: string, speed = 20): Pro
   });
 }
 
-/** 診断結果を表示 */
+/** セクションカードを1枚チャットに追加してタイプアニメーションを流す */
+async function appendSection(
+  chatBox: HTMLElement,
+  title: string,
+  text: string,
+  image?: string
+): Promise<void> {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg bot';
+  const inner = document.createElement('div');
+  inner.className = 'result-section';
+  const h3 = document.createElement('h3');
+  h3.textContent = title;
+  inner.appendChild(h3);
+  if (image) {
+    const img = document.createElement('img');
+    img.src = image;
+    img.className = 'section-image';
+    img.alt = title;
+    img.onload = () => img.classList.add('loaded');
+    img.onerror = () => img.style.display = 'none';
+    inner.appendChild(img);
+  }
+  const p = document.createElement('p');
+  inner.appendChild(p);
+  wrapper.appendChild(inner);
+  chatBox.appendChild(wrapper);
+  scrollChatToBottom();
+  await typeIntoElement(p, text, 18);
+}
+
+/** 診断結果を表示（3グループ構成・タップ回数削減版） */
 async function displayDivinationResult(result: Record<string, unknown>): Promise<void> {
   setProgress(3, 4, '導きの石を選定');
   clearInputArea();
@@ -163,121 +194,107 @@ async function displayDivinationResult(result: Record<string, unknown>): Promise
   const chatBox = document.getElementById('chatBox');
   if (!chatBox) return;
 
-  // 画像情報
   const images = (result.images || {}) as Record<string, string>;
+  const oracleCard = result.oracle_card as { image_url: string; name: string; is_upright: boolean } | undefined;
 
-  const sections = [
-    { key: 'destiny_map', title: '✨ 運命の地図', text: result.destiny_map as string, lead: 'まずは、あなた全体のテーマや流れを地図のように見ていきますね。', image: images.destiny_scene },
-    { key: 'past', title: '🌙 これまでの流れ', text: result.past as string, lead: '次に、あなたがこれまでどんな資質や流れを持って歩いてきたのかを読み解いていきます。' },
-    { key: 'present_future', title: '☀️ 今と未来への流れ', text: result.present_future as string, lead: '次に、あなたの今とこれからの流れを見ていきます。' },
-    { key: 'element_diagnosis', title: '🔥 エレメントのバランス', text: result.element_diagnosis as string, lead: '次は、火・地・風・水のバランスから見ていきます。', image: images.element_balance },
-    { key: 'bracelet_proposal', title: '💎 石の選び方と意図', text: result.bracelet_proposal as string, lead: 'ここからは石の組み合わせの意図を見ていきます。', image: images.bracelet },
-    { key: 'stone_support_message', title: '💐 石からのサポートメッセージ', text: result.stone_support_message as string, lead: '石たちのメッセージをお伝えします。' },
-  ].filter(sec => sec.text);
+  // ===== グループ1: 星の地図 + これまでの流れ =====
+  async function showGroup1(): Promise<void> {
+    await addMsg(`星の配置とエレメントの流れをもとに、${nameForDisplay}の今を読み解いていきます。`, false);
 
-  let currentIndex = 0;
-
-  await addMsg(`ここからは、星の配置とエレメントの流れをもとに、\n${nameForDisplay}の今の流れを読み解いていきます。`, false);
-
-  async function showCurrentSection(): Promise<void> {
-    if (currentIndex >= sections.length) {
-      // 追加セクション: アファメーション、ラッキーカラー、アドバイス
-      const extras: string[] = [];
-      if (result.affirmation) {
-        extras.push(`\n✨ あなたへの言葉\n${result.affirmation}`);
-      }
-      if (result.lucky_color) {
-        extras.push(`🌈 ラッキーカラー: **${result.lucky_color}**`);
-      }
-      if (result.daily_advice) {
-        extras.push(`\n📝 今日からできること\n${(result.daily_advice as string).split(',').map((a: string) => `・ ${a.trim()}`).join('\n')}`);
-      }
-      if (extras.length > 0) {
-        await addMsg(extras.join('\n\n'), false);
-      }
-
-      await addMsg('ここまでの流れから、今のあなたを整える石が見えてきました。', false);
-      await addMsg(`今回の診断であなたの軸となる石は **${stoneName}** です。`, false);
-      await addMsg(
-        `この石は、あなたの星の配置と今の心の波長から導き出されたものです。\n\n`
-        + `ふと迷ったとき、心が揺れたとき、そっと手首に触れてみてください。\n`
-        + `**${stoneName}**の静かなエネルギーが、あなた本来のリズムを思い出させてくれるはずです。`,
-        false
-      );
-      await addMsg('もしこの石たちと一緒に歩いてみたいと感じたなら、あなたの星読みと最も共鳴するブレスレットをご提案します。', false);
-      setInputArea(`
-        <button class="btn" onclick="showProductCandidates()">💎 あなたへのおすすめブレスレットを見る</button>
-        <button class="btn btn-secondary" onclick="goLineRegister()">🔮 LINEでオラクルカードを受け取る</button>
-      `);
-      return;
+    if (result.destiny_map) {
+      await appendSection(chatBox, '✨ 星の地図', result.destiny_map as string, images.destiny_scene);
     }
-
-    const sec = sections[currentIndex];
-    if (sec.lead) {
-      await addMsg(sec.lead, false);
-    }
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'msg bot';
-    const inner = document.createElement('div');
-    inner.className = 'result-section';
-    const h3 = document.createElement('h3');
-    h3.textContent = sec.title;
-
-    // セクションに対応するイメージ画像があれば表示
-    inner.appendChild(h3);
-    if (sec.image) {
-      const img = document.createElement('img');
-      img.src = sec.image;
-      img.className = 'section-image';
-      img.alt = sec.title;
-      img.onload = () => img.classList.add('loaded');
-      img.onerror = () => img.style.display = 'none';
-      inner.appendChild(img);
-    }
-
-    const p = document.createElement('p');
-    inner.appendChild(p);
-    wrapper.appendChild(inner);
-    chatBox.appendChild(wrapper);
-    scrollChatToBottom();
-
-    await typeIntoElement(p, sec.text, 20);
-
-    if (sec.key === 'element_diagnosis') {
-      await addMsg('最後にオラクルカードを引いて、導きの声を聞いてみましょう。', false);
-      const oracleCard = result.oracle_card as { image_url: string; name: string; is_upright: boolean } | undefined;
-      if (oracleCard) {
-        await showOracleCard(oracleCard);
-      }
-
-      const wrapper2 = document.createElement('div');
-      wrapper2.className = 'msg bot';
-      const inner2 = document.createElement('div');
-      inner2.className = 'result-section';
-      const h3b = document.createElement('h3');
-      h3b.textContent = 'オラクルからのメッセージ';
-      const p2 = document.createElement('p');
-      inner2.appendChild(h3b);
-      inner2.appendChild(p2);
-      wrapper2.appendChild(inner2);
-      chatBox.appendChild(wrapper2);
-      await typeIntoElement(p2, result.oracle_message as string, 20);
+    if (result.past) {
+      await appendSection(chatBox, '🌙 これまでの流れ', result.past as string);
     }
 
     setInputArea(`
-      <button class="btn" onclick="showNextSection()">次のメッセージを読む</button>
+      <button class="btn" onclick="showNextSection()">続きを読む　→　今のあなたへのメッセージ</button>
     `);
   }
 
+  // ===== グループ2: 今と未来 + エレメント + オラクルカード =====
+  async function showGroup2(): Promise<void> {
+    await addMsg('今のあなたの状態と、これからの流れを見ていきます。', false);
+
+    if (result.present_future) {
+      await appendSection(chatBox, '☀️ 今と、これからの流れ', result.present_future as string);
+    }
+    if (result.element_diagnosis) {
+      await appendSection(chatBox, '🔥 エネルギーのバランス', result.element_diagnosis as string, images.element_balance);
+    }
+
+    if (oracleCard) {
+      await addMsg('最後にオラクルカードを引いて、導きの声を聞いてみましょう。', false);
+      await showOracleCard(oracleCard);
+      if (result.oracle_message) {
+        const w = document.createElement('div');
+        w.className = 'msg bot';
+        const inn = document.createElement('div');
+        inn.className = 'result-section';
+        const h = document.createElement('h3');
+        h.textContent = 'オラクルからのメッセージ';
+        const p = document.createElement('p');
+        inn.appendChild(h);
+        inn.appendChild(p);
+        w.appendChild(inn);
+        chatBox.appendChild(w);
+        await typeIntoElement(p, result.oracle_message as string, 18);
+      }
+    }
+
+    setInputArea(`
+      <button class="btn" onclick="showNextSection()">続きを読む　→　石のメッセージ</button>
+    `);
+  }
+
+  // ===== グループ3: 石のサポート + アドバイス + 商品へ =====
+  async function showGroup3(): Promise<void> {
+    await addMsg('今のあなたを整える石と、そのサポートをお伝えします。', false);
+
+    if (result.bracelet_proposal) {
+      await appendSection(chatBox, '💎 あなたに選ばれた石', result.bracelet_proposal as string, images.bracelet);
+    }
+    if (result.stone_support_message) {
+      await appendSection(chatBox, '💐 石からのメッセージ', result.stone_support_message as string);
+    }
+
+    // アファメーション・ラッキーカラー・アドバイスをまとめて1メッセージに
+    const extras: string[] = [];
+    if (result.affirmation) extras.push(`✨ **${result.affirmation}**`);
+    if (result.lucky_color) extras.push(`🌈 今日のラッキーカラー：**${result.lucky_color}**`);
+    if (result.daily_advice) {
+      const adviceList = (result.daily_advice as string).split(',').map((a: string) => `・ ${a.trim()}`).join('\n');
+      extras.push(`📝 今日からできること\n${adviceList}`);
+    }
+    if (extras.length > 0) {
+      await addMsg(extras.join('\n\n'), false);
+    }
+
+    await addMsg(
+      `今回の診断で、${nameForDisplay}の軸となる石は **${stoneName}** です。\n\n`
+      + `ふと迷ったとき、心が揺れたとき、そっと手首に触れてみてください。\n`
+      + `**${stoneName}** の静かなエネルギーが、あなた本来のリズムを思い出させてくれます。`,
+      false
+    );
+
+    setInputArea(`
+      <button class="btn" onclick="showProductCandidates()">💎 あなたへのおすすめブレスレットを見る</button>
+      <button class="btn btn-secondary" onclick="goLineRegister()">🔮 LINEでオラクルカードを受け取る</button>
+    `);
+  }
+
+  // ===== グループ制御 =====
+  let groupIndex = 0;
+  const groups = [showGroup1, showGroup2, showGroup3];
+
   async function showNextSection(): Promise<void> {
-    const isLast = currentIndex === sections.length - 1;
-    const label = isLast ? '最後のメッセージまで読む' : '次のメッセージを読む';
-    await addMsg(label, true);
-    currentIndex++;
-    await showCurrentSection();
+    const labels = ['続きを読む　→　今のあなたへのメッセージ', '続きを読む　→　石のメッセージ'];
+    await addMsg(labels[groupIndex] || '続きを読む', true);
+    groupIndex++;
+    await groups[groupIndex]?.();
   }
 
   window.showNextSection = showNextSection;
-  await showCurrentSection();
+  await groups[0]();
 }
