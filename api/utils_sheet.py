@@ -37,9 +37,11 @@ EXPECTED_HEADERS = {
         "user_line_id", "purchased",
     ],
     ORDER_SHEET_NAME: [
-        "order_id", "diagnosis_id", "user_line_id", "product_slug",
-        "stones", "wrist_inner_cm", "bead_size_mm", "bracelet_type",
-        "order_status", "created_at",
+        "order_id", "created_at", "status",
+        "diagnosis_id", "line_user_id",
+        "customer_name", "customer_email", "customer_phone",
+        "product_name", "product_id", "sku", "quantity",
+        "total", "payment_method",
     ],
     PROFILE_SHEET_NAME: [
         "user_id", "gender", "birth_date", "birth_time",
@@ -113,19 +115,21 @@ def _get_worksheet(sheet_name: str) -> gspread.Worksheet:
 
 
 def _ensure_headers(ws: gspread.Worksheet, sheet_name: str):
-    """ヘッダー行が存在しない場合は作成する"""
+    """ヘッダー行を確認し、期待する列と一致しない場合は1行目を更新する"""
     expected = EXPECTED_HEADERS.get(sheet_name)
     if not expected:
         return
 
     try:
         first_row = ws.row_values(1)
-        if not first_row or len(first_row) == 0:
-            # ヘッダー行がないので作成
-            ws.update('A1', [expected], value_input_option='USER_ENTERED')
-            logger.info(f"ヘッダー行を作成しました: {sheet_name}")
+        if first_row == expected:
+            return  # 一致しているので何もしない
+
+        # 空、または期待と異なる場合は1行目を上書き
+        ws.update('A1', [expected], value_input_option='USER_ENTERED')
+        logger.info("ヘッダー行を更新しました: %s (%d列)", sheet_name, len(expected))
     except Exception as e:
-        logger.warning(f"ヘッダー行確認エラー ({sheet_name}): {e}")
+        logger.warning("ヘッダー行確認エラー (%s): %s", sheet_name, e)
 
 
 def _invalidate_cache(sheet_name: str = None):
@@ -221,15 +225,19 @@ def add_order(data: dict):
 
     row = [
         data.get("order_id", ""),
-        data.get("diagnosis_id", ""),
-        data.get("user_line_id", ""),
-        data.get("product_slug", ""),
-        data.get("stones", ""),
-        data.get("wrist_inner_cm", ""),
-        data.get("bead_size_mm", ""),
-        data.get("bracelet_type", ""),
-        data.get("order_status", "pending"),
         data.get("created_at", ""),
+        data.get("status", ""),
+        data.get("diagnosis_id", ""),
+        data.get("line_user_id", ""),
+        data.get("customer_name", ""),
+        data.get("customer_email", ""),
+        data.get("customer_phone", ""),
+        data.get("product_name", ""),
+        data.get("product_id", ""),
+        data.get("sku", ""),
+        data.get("quantity", ""),
+        data.get("total", ""),
+        data.get("payment_method", ""),
     ]
 
     _append_row_with_retry(sheet, row)
