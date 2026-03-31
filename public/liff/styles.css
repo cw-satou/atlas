@@ -51,15 +51,15 @@ body {
 /* スマートフォン：標準サイズを少し大きめに */
 @media (max-width: 600px) {
     html, body { font-size: 16px; }
-    .msg                                               { font-size: 16px; }
-    .result-section p                                  { font-size: 16px; }
-    .result-section h3                                 { font-size: 15px; }
-    .btn                                               { font-size: 15px; }
-    .btn-toggle                                        { font-size: 14px; }
-    .input-field label                                 { font-size: 14px; }
+    .msg                                               { font-size: 18px; }
+    .result-section p                                  { font-size: 18px; }
+    .result-section h3                                 { font-size: 16px; }
+    .btn                                               { font-size: 16px; }
+    .btn-toggle                                        { font-size: 15px; }
+    .input-field label                                 { font-size: 15px; }
     .input-field input,
     .input-field textarea,
-    .input-field select                                { font-size: 17px; }
+    .input-field select                                { font-size: 16px; }
     .progress-bar                                      { font-size: 12px; }
 }
 
