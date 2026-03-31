@@ -22,9 +22,16 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = "gemini-3.1-flash-image-preview"
 GEMINI_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
-# インメモリキャッシュ（Vercelサーバーレスの寿命内で再利用）
+# インメモリキャッシュ（同一プロセス内で再利用）
 _image_cache: dict[str, str] = {}
 CACHE_MAX_SIZE = 20  # メモリ節約のため最大20枚
+
+# ファイルキャッシュ（/tmp はVercelの同一コンテナ内で永続、ローカルは .image_cache）
+_FILE_CACHE_DIR = os.path.join(os.environ.get("TMPDIR", "/tmp"), "atlas_img_cache")
+try:
+    os.makedirs(_FILE_CACHE_DIR, exist_ok=True)
+except Exception:
+    _FILE_CACHE_DIR = ""  # ファイルキャッシュが使えない場合はスキップ
 
 
 # 石ごとのカラーテーマ（CSSフォールバック用）
@@ -43,6 +50,41 @@ def get_stone_colors(stone_name: str) -> dict:
     return STONE_COLORS.get(stone_name, DEFAULT_COLORS)
 
 
+def _file_cache_path(cache_key: str) -> str:
+    """キャッシュキーからファイルパスを生成"""
+    safe = hashlib.md5(cache_key.encode()).hexdigest()
+    return os.path.join(_FILE_CACHE_DIR, f"{safe}.txt")
+
+
+def _read_file_cache(cache_key: str) -> str | None:
+    """ファイルキャッシュからデータURIを読み込む"""
+    if not _FILE_CACHE_DIR:
+        return None
+    try:
+        path = _file_cache_path(cache_key)
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                data = f.read()
+            if data.startswith("data:"):
+                logger.info(f"ファイルキャッシュヒット: {cache_key}")
+                return data
+    except Exception as e:
+        logger.debug(f"ファイルキャッシュ読み込みエラー: {e}")
+    return None
+
+
+def _write_file_cache(cache_key: str, data_uri: str) -> None:
+    """ファイルキャッシュにデータURIを保存"""
+    if not _FILE_CACHE_DIR:
+        return
+    try:
+        with open(_file_cache_path(cache_key), "w") as f:
+            f.write(data_uri)
+        logger.info(f"ファイルキャッシュ保存: {cache_key}")
+    except Exception as e:
+        logger.debug(f"ファイルキャッシュ保存エラー: {e}")
+
+
 def _generate_image_gemini(prompt: str, cache_key: str = "") -> str | None:
     """Gemini APIで画像を生成し、base64データURIを返す
 
@@ -57,10 +99,18 @@ def _generate_image_gemini(prompt: str, cache_key: str = "") -> str | None:
         logger.warning("GEMINI_API_KEY が設定されていません。画像生成をスキップします。")
         return None
 
-    # キャッシュチェック
+    # 1. インメモリキャッシュチェック（最速）
     if cache_key and cache_key in _image_cache:
-        logger.info(f"画像キャッシュヒット: {cache_key}")
+        logger.info(f"メモリキャッシュヒット: {cache_key}")
         return _image_cache[cache_key]
+
+    # 2. ファイルキャッシュチェック（コールドスタート後も有効）
+    if cache_key:
+        cached = _read_file_cache(cache_key)
+        if cached:
+            # メモリキャッシュにも載せておく
+            _image_cache[cache_key] = cached
+            return cached
 
     try:
         resp = requests.post(
@@ -99,13 +149,14 @@ def _generate_image_gemini(prompt: str, cache_key: str = "") -> str | None:
                 b64 = inline_data["data"]
                 data_uri = f"data:{mime};base64,{b64}"
 
-                # キャッシュ保存
+                # インメモリキャッシュ保存
                 if cache_key:
                     if len(_image_cache) >= CACHE_MAX_SIZE:
-                        # 最古のエントリを削除
                         oldest = next(iter(_image_cache))
                         del _image_cache[oldest]
                     _image_cache[cache_key] = data_uri
+                    # ファイルキャッシュにも保存（コールドスタート後に再利用）
+                    _write_file_cache(cache_key, data_uri)
 
                 return data_uri
 

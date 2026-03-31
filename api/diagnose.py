@@ -169,14 +169,17 @@ def diagnose():
         top_products = recommend_products(user_profile, top_n=3)
 
         # ランク1商品のブレスレット画像をGeminiで生成
+        # シードは石名ベース（同じ石構成なら毎回キャッシュヒット）
         rank1_bracelet_image: str | None = None
         if top_products:
             rank1_stones = top_products[0].get("stones", [])
+            # 石名リストをソートして順番に依存しない一定のシードにする
+            stones_seed = "-".join(sorted(rank1_stones)) if rank1_stones else "default"
             try:
                 rank1_bracelet_image = generate_bracelet_image(
                     main_stone=rank1_stones[0] if rank1_stones else "水晶",
                     sub_stones=rank1_stones[1:] if len(rank1_stones) > 1 else None,
-                    seed_key=f"bracelet-{diagnosis_id}",
+                    seed_key=f"bracelet-{stones_seed}",
                 )
                 logger.info("ランク1ブレスレット画像生成: %s", "成功" if rank1_bracelet_image else "スキップ")
             except Exception as e:
