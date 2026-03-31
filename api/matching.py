@@ -28,6 +28,25 @@ SCORE_WEIGHTS = {
     "worry":   0.25,
 }
 
+
+def get_score_weights() -> dict:
+    """configシートのオーバーライドを反映したスコアリング重みを返す（合計1に正規化）"""
+    try:
+        from api.utils_sheet import get_config
+        cfg = get_config()
+        weights = dict(SCORE_WEIGHTS)
+        for k in ["element", "aura", "theme", "worry"]:
+            key = f"score_weight_{k}"
+            if key in cfg:
+                weights[k] = float(cfg[key])
+        total = sum(weights.values())
+        if total > 0:
+            weights = {k: v / total for k, v in weights.items()}
+        return weights
+    except Exception as e:
+        logger.warning("スコア重み読み込みエラー（デフォルト使用）: %s", e)
+        return dict(SCORE_WEIGHTS)
+
 ELEMENT_KEYS = ["fire", "earth", "air", "water"]
 AURA_KEYS    = ["intuition", "clarity", "stability", "vitality",
                  "protection", "love", "expression", "courage"]
@@ -151,11 +170,12 @@ def _score_product(user_profile: dict, product_profile: dict) -> dict:
     t_score = _tag_overlap_score(user_profile["theme_tags"], product_profile["theme_tags"])
     w_score = _tag_overlap_score(user_profile["worry_tags"], product_profile["worry_tags"])
 
+    w = get_score_weights()
     total = (
-        e_score * SCORE_WEIGHTS["element"] +
-        a_score * SCORE_WEIGHTS["aura"]    +
-        t_score * SCORE_WEIGHTS["theme"]   +
-        w_score * SCORE_WEIGHTS["worry"]
+        e_score * w["element"] +
+        a_score * w["aura"]    +
+        t_score * w["theme"]   +
+        w_score * w["worry"]
     )
     return {
         "total":   round(total * 100, 1),
@@ -221,7 +241,12 @@ def recommend_products(
       ...
     ]
     """
-    enabled_products = get_enabled_products()
+    try:
+        from api.utils_sheet import get_config
+        cfg = get_config()
+    except Exception:
+        cfg = {}
+    enabled_products = get_enabled_products(cfg)
     results = []
 
     for product in enabled_products:

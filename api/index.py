@@ -12,6 +12,7 @@ from api.utils_geocode import geocode
 from api.woo_webhook import woo_webhook
 from api.utils_woo import fetch_woo_products
 from api.utils_rate_limit import rate_limited
+from api.utils_sheet import get_config, set_config
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO)
@@ -311,6 +312,138 @@ def health_sheets():
     except Exception as e:
         result["connection_error"] = str(e)
         return jsonify({"status": "error", "detail": result}), 500
+
+
+@app.route('/admin')
+def admin_page():
+    """管理画面エントリポイント"""
+    return app.send_static_file('admin.html')
+
+
+# ===== 管理API =====
+
+def _check_admin_auth() -> bool:
+    """管理APIの認証チェック（ADMIN_PASSWORDと照合）"""
+    import os
+    admin_password = os.environ.get("ADMIN_PASSWORD", "")
+    if not admin_password:
+        return False
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        return token == admin_password
+    # bodyにpasswordが含まれる場合も許可
+    body = request.get_json(force=True, silent=True) or {}
+    return body.get("password") == admin_password
+
+
+@app.route('/api/admin/master', methods=['GET'])
+def admin_get_master():
+    """管理画面用：全マスターデータ＋現在のconfig設定を返す"""
+    # ヘッダー認証
+    if not _check_admin_auth():
+        return jsonify({"error": "認証が必要です"}), 401
+
+    from api.stone_master import STONE_MASTER
+    from api.stone_combination_master import STONE_COMBINATION_MASTER
+    from api.product_master import PRODUCT_MASTER
+    from api.matching import SCORE_WEIGHTS
+
+    cfg = get_config()
+
+    # スコア重みにconfigオーバーライドを適用
+    score_weights = dict(SCORE_WEIGHTS)
+    for k in ["element", "aura", "theme", "worry"]:
+        key = f"score_weight_{k}"
+        if key in cfg:
+            try:
+                score_weights[k] = float(cfg[key])
+            except (ValueError, TypeError):
+                pass
+
+    # 商品マスター（configオーバーライド反映済み）
+    products = []
+    for pid, p in PRODUCT_MASTER.items():
+        entry = dict(p)
+        enabled_key = f"product_{pid}_enabled"
+        priority_key = f"product_{pid}_priority"
+        if enabled_key in cfg:
+            entry["enabled"] = str(cfg[enabled_key]).lower() == "true"
+        if priority_key in cfg:
+            try:
+                entry["priority_weight"] = float(cfg[priority_key])
+            except (ValueError, TypeError):
+                pass
+        entry["product_id"] = pid
+        # 石名を付加
+        from api.stone_master import get_stone
+        entry["stone_names"] = [
+            (get_stone(part["stone_id"]) or {}).get("stone_name", part["stone_id"])
+            for part in entry["parts"]
+        ]
+        products.append(entry)
+
+    # 石マスター（表示用に整形）
+    stones = []
+    for sid, s in STONE_MASTER.items():
+        stones.append({
+            "stone_id": sid,
+            "stone_name": s["stone_name"],
+            "description": s["description"],
+            "element_profile": s["element_profile"],
+            "theme_tags": s["theme_tags"],
+            "worry_tags": s["worry_tags"],
+            "weight": s.get("weight", 1.0),
+        })
+
+    # 組み合わせマスター（frozensetをリストに変換）
+    combinations = []
+    for key, effect in STONE_COMBINATION_MASTER.items():
+        stone_ids = list(key)
+        stone_names = [
+            (STONE_MASTER.get(sid) or {}).get("stone_name", sid)
+            for sid in stone_ids
+        ]
+        combinations.append({
+            "stones": stone_ids,
+            "stone_names": stone_names,
+            "theme_tags": effect["theme_tags"],
+            "worry_tags": effect["worry_tags"],
+            "meaning": effect["meaning"],
+            "weight": effect.get("weight", 1.0),
+        })
+
+    return jsonify({
+        "score_weights": score_weights,
+        "products": products,
+        "stones": stones,
+        "combinations": combinations,
+    })
+
+
+@app.route('/api/admin/config', methods=['POST'])
+def admin_update_config():
+    """管理画面用：config設定を更新する"""
+    body = request.get_json(force=True, silent=True) or {}
+    if not _check_admin_auth():
+        return jsonify({"error": "認証が必要です"}), 401
+
+    updates = body.get("updates", {})
+    if not updates:
+        return jsonify({"error": "updatesが空です"}), 400
+
+    errors = []
+    for key, value in updates.items():
+        try:
+            note = body.get("notes", {}).get(key, "")
+            set_config(key, str(value), note)
+        except Exception as e:
+            logger.exception("config更新エラー: %s", key)
+            errors.append({"key": key, "error": str(e)})
+
+    if errors:
+        return jsonify({"status": "partial", "errors": errors}), 207
+    return jsonify({"status": "ok", "updated": list(updates.keys())})
 
 
 @app.route('/')

@@ -161,6 +161,21 @@ def get_product(product_id: int | str) -> ProductEntry | None:
     return PRODUCT_MASTER.get(str(product_id))
 
 
-def get_enabled_products() -> list[ProductEntry]:
-    """有効な商品構成の一覧を返す"""
-    return [p for p in PRODUCT_MASTER.values() if p["enabled"]]
+def get_enabled_products(config: dict | None = None) -> list[ProductEntry]:
+    """有効な商品構成の一覧を返す（configオーバーライド対応）"""
+    result = []
+    for pid, p in PRODUCT_MASTER.items():
+        entry = dict(p)
+        if config:
+            enabled_key = f"product_{pid}_enabled"
+            priority_key = f"product_{pid}_priority"
+            if enabled_key in config:
+                entry["enabled"] = str(config[enabled_key]).lower() == "true"
+            if priority_key in config:
+                try:
+                    entry["priority_weight"] = float(config[priority_key])
+                except (ValueError, TypeError):
+                    pass
+        if entry["enabled"]:
+            result.append(entry)
+    return result

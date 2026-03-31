@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>あとらす 管理画面</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+      background: #1a1a2e;
+      color: #e8e0d0;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(135deg, #0d1b4a 0%, #1a237e 100%);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #b8860b44;
+    }
+    header h1 { font-size: 18px; color: #daa520; letter-spacing: 1px; }
+    header span { font-size: 12px; color: #888; }
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ログイン */
+    #login-screen {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 80vh; gap: 16px;
+    }
+    #login-screen h2 { color: #daa520; font-size: 20px; }
+    #login-screen input {
+      width: 280px; padding: 12px 16px; border-radius: 8px;
+      border: 1px solid #b8860b44; background: #16213e;
+      color: #e8e0d0; font-size: 15px; outline: none;
+    }
+    #login-screen input:focus { border-color: #b8860b; }
+    #login-error { color: #e57373; font-size: 13px; }
+
+    /* タブ */
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #333; }
+    .tab-btn {
+      padding: 10px 20px; background: none; border: none;
+      color: #888; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent;
+      transition: all .15s;
+    }
+    .tab-btn.active { color: #daa520; border-bottom-color: #daa520; }
+    .tab-btn:hover { color: #e8e0d0; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* カード */
+    .card {
+      background: rgba(255,248,235,0.04);
+      border: 1px solid #b8860b33;
+      border-radius: 12px; padding: 20px; margin-bottom: 16px;
+    }
+    .card h3 { font-size: 15px; color: #daa520; margin-bottom: 16px; }
+
+    /* テーブル */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left; padding: 8px 10px;
+      background: rgba(184,134,11,0.12); color: #daa520;
+      border-bottom: 1px solid #b8860b33;
+    }
+    td { padding: 8px 10px; border-bottom: 1px solid #ffffff0d; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+
+    /* スコア重み */
+    .weight-row {
+      display: flex; align-items: center; gap: 12px; padding: 10px 0;
+      border-bottom: 1px solid #ffffff0d;
+    }
+    .weight-row:last-of-type { border-bottom: none; }
+    .weight-label { width: 90px; font-size: 14px; }
+    .weight-row input[type=range] {
+      flex: 1; accent-color: #b8860b; cursor: pointer;
+    }
+    .weight-pct {
+      width: 50px; text-align: right; font-weight: 600; color: #daa520; font-size: 14px;
+    }
+    .weight-row input[type=number] {
+      width: 60px; padding: 4px 8px; background: #16213e;
+      border: 1px solid #b8860b44; border-radius: 6px;
+      color: #e8e0d0; font-size: 14px; text-align: center;
+    }
+    .weight-total {
+      text-align: right; font-size: 13px; margin-top: 8px; color: #888;
+    }
+    .weight-total.warn { color: #e57373; }
+
+    /* toggle */
+    .toggle {
+      position: relative; display: inline-block; width: 44px; height: 24px;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; cursor: pointer; inset: 0;
+      background: #444; border-radius: 24px; transition: .2s;
+    }
+    .toggle-slider:before {
+      content: ""; position: absolute;
+      width: 18px; height: 18px; left: 3px; bottom: 3px;
+      background: white; border-radius: 50%; transition: .2s;
+    }
+    .toggle input:checked + .toggle-slider { background: #b8860b; }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+    /* 優先度 */
+    input.priority-input {
+      width: 64px; padding: 4px 8px; background: #16213e;
+      border: 1px solid #b8860b44; border-radius: 6px;
+      color: #e8e0d0; font-size: 13px; text-align: center;
+    }
+
+    /* ボタン */
+    .btn-save {
+      display: block; margin: 20px 0 0 auto;
+      padding: 10px 28px; background: linear-gradient(135deg, #b8860b, #daa520);
+      border: none; border-radius: 8px; color: #1a1a2e;
+      font-weight: 700; font-size: 15px; cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn-save:hover { opacity: 0.85; }
+    .btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* タグ */
+    .tag {
+      display: inline-block; background: rgba(184,134,11,0.15);
+      border: 1px solid #b8860b44; border-radius: 4px;
+      padding: 2px 6px; font-size: 11px; color: #daa520; margin: 1px;
+    }
+    .tag.worry { background: rgba(107,91,158,0.2); border-color: #6b5b9e55; color: #9b8bc8; }
+
+    /* トースト */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #1b5e20; color: #c8e6c9;
+      padding: 12px 20px; border-radius: 8px; font-size: 14px;
+      box-shadow: 0 4px 12px #00000066;
+      transition: opacity .3s; opacity: 0; pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+    #toast.error { background: #b71c1c; color: #ffcdd2; }
+
+    /* ローディング */
+    .loading { text-align: center; padding: 40px; color: #888; }
+
+    /* バー（石プロファイル） */
+    .mini-bar {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 3px;
+    }
+    .mini-bar span { width: 20px; font-size: 10px; color: #888; text-align: right; }
+    .mini-bar-track {
+      flex: 1; height: 5px; background: #333; border-radius: 3px; overflow: hidden;
+    }
+    .mini-bar-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚙️ あとらす 管理画面</h1>
+    <span id="header-info"></span>
+  </header>
+
+  <!-- ログイン画面 -->
+  <div id="login-screen">
+    <h2>🔐 ログイン</h2>
+    <input type="password" id="pw-input" placeholder="管理パスワード" autocomplete="current-password">
+    <button class="btn-save" onclick="doLogin()" style="margin:0;">ログイン</button>
+    <span id="login-error"></span>
+  </div>
+
+  <!-- メイン画面 -->
+  <div id="main-screen" style="display:none;">
+    <div class="container">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('score')">スコア重み</button>
+        <button class="tab-btn" onclick="switchTab('products')">商品マスター</button>
+        <button class="tab-btn" onclick="switchTab('stones')">石マスター</button>
+        <button class="tab-btn" onclick="switchTab('combos')">組み合わせ</button>
+      </div>
+
+      <!-- スコア重み -->
+      <div id="tab-score" class="tab-panel active">
+        <div class="card">
+          <h3>マッチングスコア重み</h3>
+          <p style="font-size:12px;color:#888;margin-bottom:16px;">合計が100%になるよう自動正規化されます。</p>
+          <div id="weight-editor"><div class="loading">読み込み中...</div></div>
+          <div id="weight-total" class="weight-total"></div>
+          <button class="btn-save" onclick="saveScoreWeights()">保存する</button>
+        </div>
+      </div>
+
+      <!-- 商品マスター -->
+      <div id="tab-products" class="tab-panel">
+        <div class="card">
+          <h3>商品マスター</h3>
+          <p style="font-size:12px;color:#888;margin-bottom:16px;">有効/無効・優先度を変更できます。優先度はスコアへの倍率（通常1.0）。</p>
+          <div id="product-table"><div class="loading">読み込み中...</div></div>
+          <button class="btn-save" onclick="saveProducts()">保存する</button>
+        </div>
+      </div>
+
+      <!-- 石マスター -->
+      <div id="tab-stones" class="tab-panel">
+        <div class="card">
+          <h3>石マスター（閲覧のみ）</h3>
+          <div id="stone-table"><div class="loading">読み込み中...</div></div>
+        </div>
+      </div>
+
+      <!-- 組み合わせ -->
+      <div id="tab-combos" class="tab-panel">
+        <div class="card">
+          <h3>石の組み合わせ効果（閲覧のみ）</h3>
+          <div id="combo-table"><div class="loading">読み込み中...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    let password = '';
+    let masterData = null;
+
+    // --- ログイン ---
+    document.getElementById('pw-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+
+    async function doLogin() {
+      password = document.getElementById('pw-input').value.trim();
+      if (!password) return;
+      try {
+        const res = await apiFetch('/api/admin/master');
+        if (res.ok) {
+          masterData = await res.json();
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('main-screen').style.display = 'block';
+          document.getElementById('header-info').textContent = '管理者ログイン中';
+          renderAll();
+        } else {
+          document.getElementById('login-error').textContent = 'パスワードが正しくありません';
+        }
+      } catch (e) {
+        document.getElementById('login-error').textContent = '接続エラー: ' + e.message;
+      }
+    }
+
+    function apiFetch(url, method = 'GET', body = null) {
+      const opts = {
+        method,
+        headers: { 'Authorization': 'Bearer ' + password, 'Content-Type': 'application/json' },
+      };
+      if (body) opts.body = JSON.stringify(body);
+      return fetch(url, opts);
+    }
+
+    // --- タブ切り替え ---
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        const names = ['score', 'products', 'stones', 'combos'];
+        b.classList.toggle('active', names[i] === name);
+      });
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+    }
+
+    // --- 描画 ---
+    function renderAll() {
+      renderScoreWeights();
+      renderProducts();
+      renderStones();
+      renderCombos();
+    }
+
+    // スコア重み
+    function renderScoreWeights() {
+      const w = masterData.score_weights;
+      const labels = { element: '星座相性', aura: 'オーラ', theme: 'テーマ', worry: '悩み' };
+      const colors = { element: '#c8860b', aura: '#9b6b3a', theme: '#7a9e4e', worry: '#6b5b9e' };
+      let html = '';
+      for (const [k, v] of Object.entries(labels)) {
+        const pct = Math.round((w[k] || 0) * 100);
+        html += `
+          <div class="weight-row">
+            <span class="weight-label">${v}</span>
+            <input type="range" min="0" max="100" value="${pct}"
+              id="w-range-${k}" oninput="syncWeight('${k}', this.value)">
+            <input type="number" min="0" max="100" value="${pct}"
+              id="w-num-${k}" oninput="syncWeight('${k}', this.value)" style="width:60px;">
+            <span style="font-size:11px;color:#888;">%</span>
+          </div>`;
+      }
+      document.getElementById('weight-editor').innerHTML = html;
+      updateWeightTotal();
+    }
+
+    function syncWeight(key, val) {
+      document.getElementById('w-range-' + key).value = val;
+      document.getElementById('w-num-' + key).value = val;
+      updateWeightTotal();
+    }
+
+    function updateWeightTotal() {
+      const keys = ['element', 'aura', 'theme', 'worry'];
+      const total = keys.reduce((s, k) => s + (parseInt(document.getElementById('w-num-' + k)?.value) || 0), 0);
+      const el = document.getElementById('weight-total');
+      el.textContent = `合計: ${total}%（保存時に自動正規化）`;
+      el.className = 'weight-total' + (total === 100 ? '' : ' warn');
+    }
+
+    async function saveScoreWeights() {
+      const keys = ['element', 'aura', 'theme', 'worry'];
+      const updates = {};
+      for (const k of keys) {
+        const val = parseInt(document.getElementById('w-num-' + k)?.value) || 0;
+        updates[`score_weight_${k}`] = (val / 100).toFixed(2);
+      }
+      await saveConfig(updates);
+    }
+
+    // 商品マスター
+    function renderProducts() {
+      const products = masterData.products;
+      let html = '<table><thead><tr><th>商品ID</th><th>SKU</th><th>石構成</th><th>性別</th><th>有効</th><th>優先度</th></tr></thead><tbody>';
+      for (const p of products) {
+        const stonesHtml = (p.stone_names || []).join(' × ');
+        const checked = p.enabled ? 'checked' : '';
+        html += `<tr>
+          <td>${p.woo_product_id}</td>
+          <td style="font-size:11px;color:#aaa;">${p.sku}</td>
+          <td>${stonesHtml}</td>
+          <td>${p.gender_mode}</td>
+          <td><label class="toggle"><input type="checkbox" id="p-en-${p.product_id}" ${checked}><span class="toggle-slider"></span></label></td>
+          <td><input class="priority-input" type="number" step="0.1" min="0.1" max="3.0" id="p-pr-${p.product_id}" value="${p.priority_weight}"></td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+      document.getElementById('product-table').innerHTML = html;
+    }
+
+    async function saveProducts() {
+      const updates = {};
+      for (const p of masterData.products) {
+        const pid = p.product_id;
+        const en = document.getElementById(`p-en-${pid}`)?.checked;
+        const pr = parseFloat(document.getElementById(`p-pr-${pid}`)?.value) || 1.0;
+        updates[`product_${pid}_enabled`] = en ? 'true' : 'false';
+        updates[`product_${pid}_priority`] = pr.toFixed(2);
+      }
+      await saveConfig(updates);
+    }
+
+    // 石マスター
+    function renderStones() {
+      const stones = masterData.stones;
+      let html = '<table><thead><tr><th>石名</th><th>説明</th><th>エレメント</th><th>テーマタグ</th><th>悩みタグ</th></tr></thead><tbody>';
+      const elemColors = { fire: '#e57373', earth: '#81c784', air: '#64b5f6', water: '#4fc3f7' };
+      const elemLabels = { fire: '火', earth: '地', air: '風', water: '水' };
+      for (const s of stones) {
+        const ep = s.element_profile || {};
+        let bars = '';
+        for (const [ek, ev] of Object.entries(ep)) {
+          bars += `<div class="mini-bar"><span>${elemLabels[ek]||ek}</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:${Math.round(ev*100)}%;background:${elemColors[ek]||'#888'};"></div></div></div>`;
+        }
+        const themeTags = (s.theme_tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+        const worryTags = (s.worry_tags || []).map(t => `<span class="tag worry">${t}</span>`).join('');
+        html += `<tr>
+          <td style="font-weight:600;white-space:nowrap;">${s.stone_name}</td>
+          <td style="font-size:11px;color:#aaa;">${s.description}</td>
+          <td style="min-width:110px;">${bars}</td>
+          <td>${themeTags}</td>
+          <td>${worryTags}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+      document.getElementById('stone-table').innerHTML = html;
+    }
+
+    // 組み合わせ
+    function renderCombos() {
+      const combos = masterData.combinations;
+      let html = '<table><thead><tr><th>石の組み合わせ</th><th>意味</th><th>テーマタグ</th><th>悩みタグ</th></tr></thead><tbody>';
+      for (const c of combos) {
+        const names = (c.stone_names || []).join(' × ');
+        const themeTags = (c.theme_tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+        const worryTags = (c.worry_tags || []).map(t => `<span class="tag worry">${t}</span>`).join('');
+        html += `<tr>
+          <td style="font-weight:600;white-space:nowrap;">${names}</td>
+          <td style="font-size:12px;color:#aaa;">${c.meaning}</td>
+          <td>${themeTags}</td>
+          <td>${worryTags}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+      document.getElementById('combo-table').innerHTML = html;
+    }
+
+    // --- 保存共通 ---
+    async function saveConfig(updates) {
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = '保存中...';
+      try {
+        const res = await apiFetch('/api/admin/config', 'POST', { updates });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('✅ 保存しました');
+          // マスターデータをリロード
+          const r2 = await apiFetch('/api/admin/master');
+          masterData = await r2.json();
+          renderAll();
+        } else {
+          showToast('❌ 保存失敗: ' + JSON.stringify(data.errors || data.error), true);
+        }
+      } catch (e) {
+        showToast('❌ エラー: ' + e.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '保存する';
+      }
+    }
+
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'show' + (isError ? ' error' : '');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.className = ''; }, 3000);
+    }
+  </script>
+</body>
+</html>

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 PROFILE_SHEET_NAME = "profiles"
 LOG_SHEET_NAME = "diagnosis_logs"
 ORDER_SHEET_NAME = "orders"
+CONFIG_SHEET_NAME = "config"
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -49,6 +50,7 @@ EXPECTED_HEADERS = {
         "birth_place", "wrist_inner_cm", "bead_size_mm", "bracelet_type",
         "last_updated",
     ],
+    CONFIG_SHEET_NAME: ["key", "value", "updated_at", "note"],
 }
 
 # ===== キャッシュ =====
@@ -385,6 +387,34 @@ def upsert_profile(profile: dict):
     set_cell("last_updated", datetime.now(timezone.utc).isoformat())
     set_cell("bead_size_mm", profile.get("bead_size_mm", ""))
     set_cell("bracelet_type", profile.get("bracelet_type", ""))
+
+
+# ===== 設定マスター操作 =====
+
+def get_config() -> dict:
+    """configシートの全設定をキーバリュー辞書で返す。取得失敗時は空dictを返す。"""
+    try:
+        ws = _get_worksheet(CONFIG_SHEET_NAME)
+        rows = ws.get_all_records()
+        return {r["key"]: r["value"] for r in rows if r.get("key")}
+    except Exception as e:
+        logger.warning("config読み込みエラー: %s", e)
+        return {}
+
+
+def set_config(key: str, value: str, note: str = "") -> None:
+    """configシートのキーを更新する（なければ新規行を追加）"""
+    ws = _get_worksheet(CONFIG_SHEET_NAME)
+    keys = ws.col_values(1)
+    now = datetime.now(timezone.utc).isoformat()
+    if key in keys:
+        row_num = keys.index(key) + 1
+        ws.update(f"B{row_num}:D{row_num}", [[str(value), now, note]],
+                  value_input_option="USER_ENTERED")
+    else:
+        ws.append_row([key, str(value), now, note], value_input_option="USER_ENTERED")
+    _invalidate_cache(CONFIG_SHEET_NAME)
+    logger.info("config更新: %s = %s", key, value)
 
 
 def get_profile(user_id: str) -> dict | None:
