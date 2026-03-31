@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 # ===== スコアリング重み =====
 
 SCORE_WEIGHTS = {
-    "element": 0.40,
-    "aura":    0.30,
-    "theme":   0.20,
-    "worry":   0.10,
+    "element": 0.35,
+    "aura":    0.25,
+    "theme":   0.15,
+    "worry":   0.25,
 }
 
 ELEMENT_KEYS = ["fire", "earth", "air", "water"]

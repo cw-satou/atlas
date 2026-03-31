@@ -48,16 +48,59 @@ CONCERN_WORRY_MAP: dict[str, list[str]] = {
 # エレメント名の英語→英語正規化（horoscope側は "wind"、matching側は "air" を使用）
 ELEMENT_NORMALIZE = {"wind": "air"}
 
+# problem テキストのキーワード → worry_tags / theme_tags マッピング
+# キーワードがテキストに含まれていれば対応するタグを追加する
+PROBLEM_KEYWORD_MAP: list[tuple[list[str], list[str], list[str]]] = [
+    # (検索キーワード, 追加worry_tags, 追加theme_tags)
+    (["仕事", "職場", "会社", "転職", "キャリア", "昇進", "副業"],
+     ["仕事", "停滞感", "踏み出せない"], ["行動力", "目標達成", "実現力"]),
+    (["お金", "金銭", "収入", "給料", "貯金", "節約", "投資", "お財布", "財布", "金欠"],
+     ["金運", "停滞感"], ["金運", "豊かさ"]),
+    (["恋愛", "恋", "好き", "彼氏", "彼女", "結婚", "夫", "妻", "パートナー",
+      "浮気", "別れ", "片思い", "告白", "デート"],
+     ["恋愛", "孤独感", "感情の揺れ"], ["愛情", "自己愛", "調和"]),
+    (["健康", "体調", "疲れ", "疲労", "眠れない", "睡眠", "病気", "不調", "だるい"],
+     ["疲労感", "眠れない", "何となく不調"], ["癒し", "活力"]),
+    (["不安", "心配", "怖い", "恐い", "こわい"],
+     ["不安", "焦り"], ["精神統一", "安定"]),
+    (["ストレス", "プレッシャー", "追い詰め"],
+     ["ストレス", "焦り"], ["癒し", "精神統一"]),
+    (["人間関係", "人付き合い", "友達", "友人", "家族", "上司", "部下", "同僚", "職場の人"],
+     ["人間関係", "感情の揺れ", "他人の影響を受けやすい"], ["調和", "コミュニケーション"]),
+    (["孤独", "ひとり", "一人", "孤立", "寂しい"],
+     ["孤独感", "自己否定"], ["愛情", "自己愛"]),
+    (["自信", "自己肯定", "自分を信じ", "自分が嫌"],
+     ["自信不足", "自己否定"], ["自己表現", "行動力"]),
+    (["やる気", "モチベーション", "元気がない", "無気力", "だらだら"],
+     ["やる気がでない", "停滞感"], ["行動力", "活力"]),
+    (["迷い", "迷って", "どうすれば", "わからない", "決められない", "決断"],
+     ["迷い", "方向性", "決断できない"], ["直感", "自己理解"]),
+    (["変わりたい", "変化", "前進", "踏み出", "一歩"],
+     ["変化への恐れ", "踏み出せない"], ["変容", "前進"]),
+]
+
+
+def _extract_tags_from_problem(problem: str) -> tuple[list[str], list[str]]:
+    """problem テキストをキーワードスキャンして worry_tags / theme_tags を抽出する"""
+    extra_worry: list[str] = []
+    extra_theme: list[str] = []
+    for keywords, worry, theme in PROBLEM_KEYWORD_MAP:
+        if any(kw in problem for kw in keywords):
+            extra_worry.extend(worry)
+            extra_theme.extend(theme)
+    return list(dict.fromkeys(extra_worry)), list(dict.fromkeys(extra_theme))
+
 
 def _build_user_profile_from_chart(
     chart_info: dict,
     concerns: list[str],
+    problem: str = "",
 ) -> dict:
     """
-    ホロスコープ情報と悩みカテゴリからユーザープロファイルを生成する。
+    ホロスコープ情報・悩みカテゴリ・problem テキストからユーザープロファイルを生成する。
 
     不足エレメントを補いたいベクトルに変換し、
-    悩みカテゴリからテーマ・悩みタグを生成する。
+    悩みカテゴリと problem テキストのキーワードからテーマ・悩みタグを生成する。
     """
     balance = chart_info.get("element_balance") or {
         "fire": chart_info.get("fire", 1),
@@ -74,12 +117,19 @@ def _build_user_profile_from_chart(
         # 少ないほど値が高くなるよう反転
         element_lack[normalized_key] = max(0.0, 1.0 - (count / total))
 
-    # 悩みからテーマタグと悩みタグを収集
+    # 悩みカテゴリからタグを収集
     theme_tags: list[str] = []
     worry_tags: list[str] = []
     for concern in (concerns or []):
         theme_tags.extend(CONCERN_THEME_MAP.get(concern, []))
         worry_tags.extend(CONCERN_WORRY_MAP.get(concern, []))
+
+    # problem テキストのキーワードからタグを追加（入力内容を優先反映）
+    if problem:
+        extra_worry, extra_theme = _extract_tags_from_problem(problem)
+        # problem 由来タグを先頭に追加してマッチング重みを高める
+        worry_tags = extra_worry + worry_tags
+        theme_tags = extra_theme + theme_tags
 
     # 重複除去
     theme_tags = list(dict.fromkeys(theme_tags))
@@ -161,8 +211,9 @@ def diagnose():
             logger.error("AI診断エラー: %s", ai_result["error"])
             return jsonify({"error": ai_result["error"]}), 500
 
-        # ユーザープロファイル構築
-        user_profile = _build_user_profile_from_chart(chart_info, concerns)
+        # ユーザープロファイル構築（problem テキストも反映）
+        problem_text = req.get("problem", "") or ""
+        user_profile = _build_user_profile_from_chart(chart_info, concerns, problem_text)
 
         # マッチングエンジンで上位3商品を取得
         top_products = recommend_products(user_profile, top_n=3)
