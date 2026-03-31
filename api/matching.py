@@ -257,10 +257,13 @@ def recommend_products(
             total = min(100.0, score_data["total"] * product.get("priority_weight", 1.0))
 
             stone_names = []
+            stone_colors = []  # 石ごとの代表色（color_tagsの先頭）
             for part in product["parts"]:
                 stone = get_stone(part["stone_id"])
                 if stone:
                     stone_names.append(stone["stone_name"])
+                    tags = stone.get("color_tags", [])
+                    stone_colors.append(tags[0] if tags else "")
 
             reason = _build_reason(user_profile, product_profile, product)
 
@@ -276,6 +279,7 @@ def recommend_products(
                 "sku":                product["sku"],
                 "recommendation_reason": reason,
                 "stones":             stone_names,
+                "stone_colors":       stone_colors,
             })
         except Exception as e:
             logger.error("商品スコア計算エラー woo_product_id=%s: %s",

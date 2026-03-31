@@ -2,6 +2,9 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    /* LINE LIFF・通常ブラウザ問わず文字サイズ自動調整を無効化 */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 @font-face {

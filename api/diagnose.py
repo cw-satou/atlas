@@ -220,8 +220,10 @@ def diagnose():
         # マッチングエンジンで上位3商品を取得
         top_products = recommend_products(user_profile, top_n=3)
 
-        # ランク1商品の石リストを取得
+        # ランク1商品の石リストを取得し、AI選定石名をランク1の主要石に統一
         rank1_stones = top_products[0].get("stones", []) if top_products else []
+        if rank1_stones:
+            ai_result["stone_name"] = rank1_stones[0]
         rank1_seed = "-".join(sorted(rank1_stones))
 
         # WooCommerce取得とGemini石ビーズ画像生成を並列実行
@@ -260,6 +262,7 @@ def diagnose():
                 "generated_image_url":    rank1_bracelet_image if is_rank1 else None,
                 "product_url":            woo.get("product_url", ""),
                 "stones":                 product.get("stones", []),
+                "stone_colors":           product.get("stone_colors", []),
                 "recommendation_reason":  product.get("recommendation_reason", ""),
                 "oracle_card":            ai_result.get("oracle_card"),
                 "diagnosis_message":      ai_result.get("stone_support_message", ""),

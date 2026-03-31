@@ -21,10 +21,31 @@ interface Recommendation {
   generated_image_url?: string | null;
   product_url: string;
   stones: string[];
+  stone_colors: string[];
   recommendation_reason: string;
   oracle_card?: { name: string; is_upright: boolean };
   diagnosis_message?: string;
 }
+
+/** 英語カラータグ → 日本語表記 */
+const COLOR_JA: Record<string, string> = {
+  blue:    '青',
+  gold:    'ゴールド',
+  orange:  'オレンジ',
+  red:     '赤',
+  green:   '緑',
+  purple:  '紫',
+  pink:    'ピンク',
+  white:   '白',
+  black:   '黒',
+  gray:    'グレー',
+  grey:    'グレー',
+  yellow:  'イエロー',
+  brown:   'ブラウン',
+  clear:   'クリア',
+  silver:  'シルバー',
+  rainbow: '虹色',
+};
 
 /** 単一スコアバー行（ラベル・バー・パーセントを1行で表示） */
 function buildSingleBar(label: string, pct: number, gradient: string): string {
@@ -65,7 +86,13 @@ function buildProductCard(rec: Recommendation, idx: number, isSelected: boolean)
   const rank = rec.rank ?? idx + 1;
   const rankLabel = rank === 1 ? '✨ 第1位' : rank === 2 ? '🌙 第2位' : '⭐ 第3位';
   const priceText = rec.price ? `¥${Number(rec.price).toLocaleString()}` : '';
-  const stonesText = (rec.stones || []).join(' × ') || '—';
+  const stonesText = (rec.stones || [])
+    .map((name, i) => {
+      const colorKey = (rec.stone_colors || [])[i] || '';
+      const colorJa = COLOR_JA[colorKey] || '';
+      return colorJa ? `${name}（${colorJa}）` : name;
+    })
+    .join(' × ') || '—';
   const reason = rec.recommendation_reason || 'あなたの星読みに共鳴する構成です';
 
   // Gemini生成画像を優先、なければWooCommerce画像
