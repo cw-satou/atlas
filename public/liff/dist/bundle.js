@@ -35,23 +35,38 @@
     const decoded = text.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
     return decoded.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   }
-  function typeText(element, text, speed = 40) {
+  function typeHtml(element, html, speed = 40) {
     return new Promise((resolve) => {
-      const plain = text.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, "");
+      const tokens = [];
+      const re = /(<[^>]+\/?>|<\/[^>]+>)|([^<])/g;
+      let m;
+      while ((m = re.exec(html)) !== null) {
+        tokens.push(m[0]);
+      }
       let i = 0;
+      let current = "";
       function type() {
-        if (i < plain.length) {
-          element.textContent = plain.slice(0, i + 1);
+        while (i < tokens.length && tokens[i].startsWith("<")) {
+          current += tokens[i];
           i++;
+        }
+        if (i < tokens.length) {
+          current += tokens[i];
+          i++;
+          element.innerHTML = current;
           scrollChatToBottom();
           setTimeout(type, speed);
         } else {
-          element.innerHTML = text;
+          element.innerHTML = html;
+          scrollChatToBottom();
           resolve();
         }
       }
       type();
     });
+  }
+  function typeText(element, text, speed = 40) {
+    return typeHtml(element, text, speed);
   }
   function addMsg(text, isUser = false) {
     state.messageQueue = state.messageQueue.then(() => new Promise((r) => setTimeout(r, isUser ? 300 : 1e3))).then(() => renderMessage(text, isUser));
@@ -870,23 +885,8 @@ ${fortuneText}`, false);
     }
   }
   function typeIntoElement(element, rawText, speed = 20) {
-    return new Promise((resolve) => {
-      const html = formatText(rawText || "");
-      const plain = html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, "");
-      let i = 0;
-      function step() {
-        if (i < plain.length) {
-          element.textContent = plain.slice(0, i + 1);
-          i++;
-          scrollChatToBottom();
-          setTimeout(step, speed);
-        } else {
-          element.innerHTML = html;
-          resolve();
-        }
-      }
-      step();
-    });
+    const html = formatText((rawText || "").replace(/\n/g, "<br>"));
+    return typeHtml(element, html, speed);
   }
   async function appendSection(chatBox, title, text, image) {
     const wrapper = document.createElement("div");

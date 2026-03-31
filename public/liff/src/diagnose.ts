@@ -4,7 +4,7 @@
  */
 
 import { state } from './state';
-import { addMsg, setInputArea, clearInputArea, setProgress, formatText, scrollChatToBottom } from './chat';
+import { addMsg, setInputArea, clearInputArea, setProgress, formatText, typeHtml, scrollChatToBottom } from './chat';
 import { getUserNameForDisplay } from './profile';
 
 const thinkingMessages = [
@@ -127,27 +127,11 @@ async function showOracleCard(card: { image_url?: string; name: string; is_uprig
   }
 }
 
-/** セクション内タイプエフェクト */
+/** セクション内タイプエフェクト（改行・太字をタイプ中から描画） */
 function typeIntoElement(element: HTMLElement, rawText: string, speed = 20): Promise<void> {
-  return new Promise(resolve => {
-    const html = formatText(rawText || '');
-    const plain = html
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<[^>]*>/g, '');
-    let i = 0;
-    function step(): void {
-      if (i < plain.length) {
-        element.textContent = plain.slice(0, i + 1);
-        i++;
-        scrollChatToBottom();
-        setTimeout(step, speed);
-      } else {
-        element.innerHTML = html;
-        resolve();
-      }
-    }
-    step();
-  });
+  // \n → <br> 変換してから formatText（** → <strong>）を適用
+  const html = formatText((rawText || '').replace(/\n/g, '<br>'));
+  return typeHtml(element, html, speed);
 }
 
 /** セクションカードを1枚チャットに追加してタイプアニメーションを流す */

@@ -22,26 +22,49 @@ export function formatText(text: string): string {
   return decoded.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 }
 
-/** タイピングエフェクト付きテキスト表示 */
-export function typeText(element: HTMLElement, text: string, speed = 40): Promise<void> {
+/**
+ * HTML対応タイピングエフェクト
+ * HTMLタグ（<br>・<strong>等）は即時挿入し、テキスト文字だけを1文字ずつ表示する。
+ * これにより太字・改行がタイプ中から正しく描画される。
+ */
+export function typeHtml(element: HTMLElement, html: string, speed = 40): Promise<void> {
   return new Promise((resolve) => {
-    const plain = text
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<[^>]*>/g, '');
+    // HTMLをトークン列に分解: タグ全体 or テキスト1文字
+    const tokens: string[] = [];
+    const re = /(<[^>]+\/?>|<\/[^>]+>)|([^<])/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      tokens.push(m[0]);
+    }
+
     let i = 0;
+    let current = '';
+
     function type(): void {
-      if (i < plain.length) {
-        element.textContent = plain.slice(0, i + 1);
+      // HTMLタグはまとめて即時挿入（タグ文字を1文字ずつ表示しない）
+      while (i < tokens.length && tokens[i].startsWith('<')) {
+        current += tokens[i];
         i++;
+      }
+      if (i < tokens.length) {
+        current += tokens[i];
+        i++;
+        element.innerHTML = current;
         scrollChatToBottom();
         setTimeout(type, speed);
       } else {
-        element.innerHTML = text;
+        element.innerHTML = html;
+        scrollChatToBottom();
         resolve();
       }
     }
     type();
   });
+}
+
+/** タイピングエフェクト付きテキスト表示（フォーマット済みHTMLを受け取る） */
+export function typeText(element: HTMLElement, text: string, speed = 40): Promise<void> {
+  return typeHtml(element, text, speed);
 }
 
 /** メッセージをチャットに追加（キュー制御付き、メッセージ間に1秒の間） */
