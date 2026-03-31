@@ -141,6 +141,48 @@ def health():
     return jsonify({"status": "ok", "service": "星の羅針盤 API"})
 
 
+@app.route('/api/health/sheets', methods=['GET'])
+def health_sheets():
+    """Google Sheets接続診断エンドポイント"""
+    import os, json
+    result = {}
+
+    # 環境変数の存在確認
+    sheet_id = os.environ.get("GOOGLE_SHEET_ID", "")
+    sa_json  = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+    result["GOOGLE_SHEET_ID"]              = sheet_id[:8] + "..." if sheet_id else "❌ 未設定"
+    result["GOOGLE_SERVICE_ACCOUNT_JSON"]  = "✅ 設定あり" if sa_json else "❌ 未設定"
+
+    if not sheet_id or not sa_json:
+        return jsonify({"status": "error", "detail": result}), 500
+
+    # サービスアカウントのメールアドレスを表示
+    try:
+        info = json.loads(sa_json)
+        result["service_account_email"] = info.get("client_email", "不明")
+    except Exception as e:
+        result["service_account_email"] = f"JSON解析エラー: {e}"
+        return jsonify({"status": "error", "detail": result}), 500
+
+    # スプレッドシートへの接続テスト
+    try:
+        from api.utils_sheet import _get_worksheet, LOG_SHEET_NAME, ORDER_SHEET_NAME, PROFILE_SHEET_NAME
+        sheets_status = {}
+        for name in [LOG_SHEET_NAME, ORDER_SHEET_NAME, PROFILE_SHEET_NAME]:
+            try:
+                ws = _get_worksheet(name)
+                headers = ws.row_values(1)
+                sheets_status[name] = f"✅ 接続OK（{len(headers)}列）"
+            except Exception as e:
+                sheets_status[name] = f"❌ {e}"
+        result["sheets"] = sheets_status
+        all_ok = all("✅" in v for v in sheets_status.values())
+        return jsonify({"status": "ok" if all_ok else "partial", "detail": result})
+    except Exception as e:
+        result["connection_error"] = str(e)
+        return jsonify({"status": "error", "detail": result}), 500
+
+
 @app.route('/')
 def index():
     """フロントエンドのエントリポイント"""
