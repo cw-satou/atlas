@@ -185,7 +185,7 @@ def health_gemini():
                 "contents": [{"parts": [{"text": "A simple blue circle on white background"}]}],
                 "generationConfig": {"responseModalities": ["IMAGE"]},
             },
-            timeout=30,
+            timeout=120,
         )
         if resp.status_code != 200:
             return jsonify({

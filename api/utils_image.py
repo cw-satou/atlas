@@ -261,7 +261,7 @@ def _generate_image_gemini(prompt: str, cache_key: str = "") -> str | None:
                     "responseModalities": ["IMAGE"],
                 },
             },
-            timeout=30,
+            timeout=120,
         )
 
         if resp.status_code != 200:
