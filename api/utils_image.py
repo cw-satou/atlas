@@ -1,20 +1,29 @@
 """画像生成モジュール
 
 Gemini API（gemini-3.1-flash-image-preview）を使って診断結果に合わせた
-イメージ画像を生成する。生成した画像はbase64エンコードでフロントエンドに返す。
-同じシードキーに基づくキャッシュで再生成を防止する。
+イメージ画像を生成する。
+
+キャッシュ戦略（3層）:
+  1. インメモリ  - 同一プロセス内で最速再利用
+  2. /tmp ファイル - Vercel同一コンテナ内で永続（コールドスタート後も数時間有効）
+  3. Google Drive  - 恒久保存。DRIVE_IMAGE_FOLDER_IDが設定されていれば使用
+
+Drive保存時は base64 ではなく Drive の公開URLを返すため、
+フロントの <img src="..."> に直接使える。
 
 環境変数:
-    GEMINI_API_KEY: Google AI Studio / Gemini APIのAPIキー
+    GEMINI_API_KEY            : Google AI Studio / Gemini APIのAPIキー
+    DRIVE_IMAGE_FOLDER_ID     : 画像を保存するGoogle DriveフォルダのID
+    GOOGLE_SERVICE_ACCOUNT_JSON: Drive認証用サービスアカウントJSON（Sheets共通）
 """
 
 import os
+import io
 import json
 import base64
 import hashlib
 import logging
 import requests
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +31,23 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = "gemini-3.1-flash-image-preview"
 GEMINI_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
-# インメモリキャッシュ（同一プロセス内で再利用）
-_image_cache: dict[str, str] = {}
-CACHE_MAX_SIZE = 20  # メモリ節約のため最大20枚
+DRIVE_IMAGE_FOLDER_ID = os.environ.get("DRIVE_IMAGE_FOLDER_ID", "")
 
-# ファイルキャッシュ（/tmp はVercelの同一コンテナ内で永続、ローカルは .image_cache）
+# ===== キャッシュ設定 =====
+
+# 1. インメモリキャッシュ
+_image_cache: dict[str, str] = {}
+CACHE_MAX_SIZE = 20
+
+# 2. /tmp ファイルキャッシュ
 _FILE_CACHE_DIR = os.path.join(os.environ.get("TMPDIR", "/tmp"), "atlas_img_cache")
 try:
     os.makedirs(_FILE_CACHE_DIR, exist_ok=True)
 except Exception:
-    _FILE_CACHE_DIR = ""  # ファイルキャッシュが使えない場合はスキップ
+    _FILE_CACHE_DIR = ""
+
+# 3. Drive APIサービス（遅延初期化）
+_drive_service_cache: dict = {"service": None}
 
 
 # 石ごとのカラーテーマ（CSSフォールバック用）
@@ -50,68 +66,188 @@ def get_stone_colors(stone_name: str) -> dict:
     return STONE_COLORS.get(stone_name, DEFAULT_COLORS)
 
 
-def _file_cache_path(cache_key: str) -> str:
-    """キャッシュキーからファイルパスを生成"""
-    safe = hashlib.md5(cache_key.encode()).hexdigest()
-    return os.path.join(_FILE_CACHE_DIR, f"{safe}.txt")
+# ===== キャッシュ操作 =====
+
+def _cache_filename(cache_key: str) -> str:
+    """キャッシュキーのMD5ハッシュからファイル名を生成"""
+    return hashlib.md5(cache_key.encode()).hexdigest()
 
 
 def _read_file_cache(cache_key: str) -> str | None:
-    """ファイルキャッシュからデータURIを読み込む"""
+    """/tmp ファイルキャッシュを読む（Drive URLまたはbase64を返す）"""
     if not _FILE_CACHE_DIR:
         return None
     try:
-        path = _file_cache_path(cache_key)
+        path = os.path.join(_FILE_CACHE_DIR, f"{_cache_filename(cache_key)}.txt")
         if os.path.exists(path):
             with open(path, "r") as f:
-                data = f.read()
-            if data.startswith("data:"):
-                logger.info(f"ファイルキャッシュヒット: {cache_key}")
+                data = f.read().strip()
+            if data:
+                logger.info("ファイルキャッシュヒット: %s", cache_key)
                 return data
     except Exception as e:
-        logger.debug(f"ファイルキャッシュ読み込みエラー: {e}")
+        logger.debug("ファイルキャッシュ読み込みエラー: %s", e)
     return None
 
 
-def _write_file_cache(cache_key: str, data_uri: str) -> None:
-    """ファイルキャッシュにデータURIを保存"""
+def _write_file_cache(cache_key: str, value: str) -> None:
+    """/tmp ファイルキャッシュに書き込む"""
     if not _FILE_CACHE_DIR:
         return
     try:
-        with open(_file_cache_path(cache_key), "w") as f:
-            f.write(data_uri)
-        logger.info(f"ファイルキャッシュ保存: {cache_key}")
+        path = os.path.join(_FILE_CACHE_DIR, f"{_cache_filename(cache_key)}.txt")
+        with open(path, "w") as f:
+            f.write(value)
+        logger.info("ファイルキャッシュ保存: %s", cache_key)
     except Exception as e:
-        logger.debug(f"ファイルキャッシュ保存エラー: {e}")
+        logger.debug("ファイルキャッシュ保存エラー: %s", e)
 
+
+def _get_drive_service():
+    """Drive APIサービスを返す（遅延初期化・キャッシュ付き）"""
+    if _drive_service_cache["service"]:
+        return _drive_service_cache["service"]
+    if not DRIVE_IMAGE_FOLDER_ID:
+        return None
+    creds_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+    if not creds_json:
+        return None
+    try:
+        from google.oauth2.service_account import Credentials
+        from googleapiclient.discovery import build
+        info = json.loads(creds_json)
+        creds = Credentials.from_service_account_info(
+            info,
+            scopes=["https://www.googleapis.com/auth/drive"],
+        )
+        service = build("drive", "v3", credentials=creds, cache_discovery=False)
+        _drive_service_cache["service"] = service
+        logger.info("Drive APIサービス初期化完了")
+        return service
+    except Exception as e:
+        logger.warning("Drive APIサービス初期化エラー: %s", e)
+        return None
+
+
+def _drive_file_name(cache_key: str) -> str:
+    """キャッシュキーからDriveファイル名を生成"""
+    return f"atlas_img_{_cache_filename(cache_key)}.png"
+
+
+def _find_in_drive(cache_key: str) -> str | None:
+    """DriveフォルダにキャッシュキーのファイルがあればURLを返す"""
+    service = _get_drive_service()
+    if not service:
+        return None
+    try:
+        fname = _drive_file_name(cache_key)
+        results = service.files().list(
+            q=f"name='{fname}' and '{DRIVE_IMAGE_FOLDER_ID}' in parents and trashed=false",
+            fields="files(id)",
+            pageSize=1,
+        ).execute()
+        files = results.get("files", [])
+        if files:
+            file_id = files[0]["id"]
+            url = f"https://drive.google.com/uc?id={file_id}&export=view"
+            logger.info("Driveキャッシュヒット: %s → %s", cache_key, file_id)
+            return url
+    except Exception as e:
+        logger.debug("Drive検索エラー: %s", e)
+    return None
+
+
+def _upload_to_drive(data_uri: str, cache_key: str) -> str | None:
+    """base64データURIをDriveフォルダにアップロードし公開URLを返す"""
+    service = _get_drive_service()
+    if not service:
+        return None
+    try:
+        from googleapiclient.http import MediaIoBaseUpload
+        # "data:image/png;base64,XXX" からバイト列へ
+        _, b64part = data_uri.split(",", 1)
+        img_bytes = base64.b64decode(b64part)
+
+        fname = _drive_file_name(cache_key)
+        file_metadata = {
+            "name": fname,
+            "parents": [DRIVE_IMAGE_FOLDER_ID],
+        }
+        media = MediaIoBaseUpload(
+            io.BytesIO(img_bytes),
+            mimetype="image/png",
+            resumable=False,
+        )
+        created = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields="id",
+        ).execute()
+        file_id = created["id"]
+
+        # 誰でも閲覧できるよう公開設定
+        service.permissions().create(
+            fileId=file_id,
+            body={"type": "anyone", "role": "reader"},
+        ).execute()
+
+        url = f"https://drive.google.com/uc?id={file_id}&export=view"
+        logger.info("Drive保存完了: %s → %s", cache_key, file_id)
+        return url
+    except Exception as e:
+        logger.warning("Driveアップロードエラー: %s", e)
+        return None
+
+
+def _set_cache(cache_key: str, value: str) -> None:
+    """メモリ＋ファイルキャッシュに書き込む"""
+    if len(_image_cache) >= CACHE_MAX_SIZE:
+        oldest = next(iter(_image_cache))
+        del _image_cache[oldest]
+    _image_cache[cache_key] = value
+    _write_file_cache(cache_key, value)
+
+
+# ===== メイン画像生成 =====
 
 def _generate_image_gemini(prompt: str, cache_key: str = "") -> str | None:
-    """Gemini APIで画像を生成し、base64データURIを返す
+    """Gemini APIで画像を生成する。
 
-    Args:
-        prompt: 画像生成プロンプト（英語推奨）
-        cache_key: キャッシュキー（空ならキャッシュしない）
+    キャッシュ優先順位:
+      1. インメモリ  → Drive URLまたはbase64を即返却
+      2. /tmp ファイル → 同上
+      3. Google Drive  → URLを取得しキャッシュに載せて返却
+      4. Gemini API生成 → Drive保存 or base64のままキャッシュして返却
 
     Returns:
-        "data:image/png;base64,..." 形式のデータURI。失敗時はNone。
+        DRIVE_IMAGE_FOLDER_IDが設定されている場合: Drive公開URL
+        未設定の場合: "data:image/png;base64,..." 形式のデータURI
+        失敗時: None
     """
     if not GEMINI_API_KEY:
         logger.warning("GEMINI_API_KEY が設定されていません。画像生成をスキップします。")
         return None
 
-    # 1. インメモリキャッシュチェック（最速）
+    # 1. メモリキャッシュ
     if cache_key and cache_key in _image_cache:
-        logger.info(f"メモリキャッシュヒット: {cache_key}")
+        logger.info("メモリキャッシュヒット: %s", cache_key)
         return _image_cache[cache_key]
 
-    # 2. ファイルキャッシュチェック（コールドスタート後も有効）
+    # 2. /tmp ファイルキャッシュ
     if cache_key:
         cached = _read_file_cache(cache_key)
         if cached:
-            # メモリキャッシュにも載せておく
             _image_cache[cache_key] = cached
             return cached
 
+    # 3. Google Driveキャッシュ（フォルダID設定時のみ）
+    if cache_key and DRIVE_IMAGE_FOLDER_ID:
+        drive_url = _find_in_drive(cache_key)
+        if drive_url:
+            _set_cache(cache_key, drive_url)
+            return drive_url
+
+    # 4. Gemini APIで生成
     try:
         resp = requests.post(
             GEMINI_ENDPOINT,
@@ -133,7 +269,7 @@ def _generate_image_gemini(prompt: str, cache_key: str = "") -> str | None:
         )
 
         if resp.status_code != 200:
-            logger.warning(f"Gemini画像生成エラー: HTTP {resp.status_code} - {resp.text[:200]}")
+            logger.warning("Gemini画像生成エラー: HTTP %s - %s", resp.status_code, resp.text[:200])
             return None
 
         data = resp.json()
@@ -149,15 +285,19 @@ def _generate_image_gemini(prompt: str, cache_key: str = "") -> str | None:
                 b64 = inline_data["data"]
                 data_uri = f"data:{mime};base64,{b64}"
 
-                # インメモリキャッシュ保存
-                if cache_key:
-                    if len(_image_cache) >= CACHE_MAX_SIZE:
-                        oldest = next(iter(_image_cache))
-                        del _image_cache[oldest]
-                    _image_cache[cache_key] = data_uri
-                    # ファイルキャッシュにも保存（コールドスタート後に再利用）
-                    _write_file_cache(cache_key, data_uri)
+                if not cache_key:
+                    return data_uri
 
+                # Driveフォルダが設定されていればアップロードしてURLを返す
+                if DRIVE_IMAGE_FOLDER_ID:
+                    drive_url = _upload_to_drive(data_uri, cache_key)
+                    if drive_url:
+                        _set_cache(cache_key, drive_url)
+                        return drive_url
+                    # Drive保存失敗時はbase64にフォールバック
+
+                # Driveなし or 保存失敗 → base64をキャッシュ
+                _set_cache(cache_key, data_uri)
                 return data_uri
 
         logger.warning("Gemini画像生成: 画像データなし")
@@ -167,7 +307,7 @@ def _generate_image_gemini(prompt: str, cache_key: str = "") -> str | None:
         logger.warning("Gemini画像生成: タイムアウト")
         return None
     except Exception as e:
-        logger.warning(f"Gemini画像生成エラー: {e}")
+        logger.warning("Gemini画像生成エラー: %s", e)
         return None
 
 
@@ -175,6 +315,8 @@ def _build_cache_key(prefix: str, seed: str) -> str:
     """キャッシュキーを構築"""
     return f"{prefix}-{hashlib.md5(seed.encode()).hexdigest()[:12]}"
 
+
+# ===== 各シーン生成関数 =====
 
 def generate_oracle_card_image(card_name: str, card_name_en: str, is_upright: bool, seed_key: str = "") -> str | None:
     """オラクルカード画像を生成する"""
@@ -200,7 +342,6 @@ def generate_destiny_scene(element_lack_ja: str, stone_name: str, seed_key: str 
         "水": "moonlit underwater temple with bioluminescent coral and jellyfish, calm ocean surface reflecting stars",
     }
     scene = element_scenes.get(element_lack_ja, "cosmic nebula with swirling galaxies and constellation patterns")
-
     prompt = (
         f"A breathtaking fantasy landscape: {scene}. "
         f"A glowing {stone_name} gemstone crystal floating in the center, emanating mystical energy. "
@@ -221,7 +362,6 @@ def generate_element_balance(fire: int, earth: int, wind: int, water: int, seed_
         "water": "deep blue and teal flowing water stream with moonlight",
     }
     dominant_mood = moods.get(dominant, "balanced cosmic energy")
-
     prompt = (
         "Four elemental energy orbs floating in a cosmic mandala: "
         f"fire (red), earth (green), wind (white), water (blue). {dominant_mood} is dominant and largest. "
@@ -237,7 +377,6 @@ def generate_bracelet_image(main_stone: str, sub_stones: list[str] | None = None
     stones_desc = main_stone
     if sub_stones:
         stones_desc += " with " + " and ".join(sub_stones) + " accent beads"
-
     prompt = (
         f"A luxury handcrafted gemstone bracelet featuring polished {stones_desc}. "
         "Elegant Japanese spiritual jewelry on white silk fabric. "

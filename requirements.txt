@@ -6,4 +6,5 @@ openai>=1.3.0
 httpx==0.27.2
 gspread==6.1.2
 google-auth==2.29.0
+google-api-python-client>=2.100.0
 pyswisseph==2.10.3.2
