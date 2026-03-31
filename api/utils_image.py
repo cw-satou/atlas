@@ -28,7 +28,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-2.0-flash-preview-image-generation"
+GEMINI_MODEL = "gemini-3.1-flash-image-preview"
 GEMINI_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 DRIVE_IMAGE_FOLDER_ID = os.environ.get("DRIVE_IMAGE_FOLDER_ID", "")
