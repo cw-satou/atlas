@@ -156,15 +156,49 @@ PRODUCT_MASTER: dict[str, ProductEntry] = {
 }
 
 
+import time as _time
+
+# シートキャッシュ（TTL: 300秒）
+_sheet_cache: dict = {"data": None, "expires": 0.0}
+
+
+def _load_from_sheet() -> dict | None:
+    """product_masterシートからデータを読み込む（失敗時はNone）"""
+    try:
+        from api.utils_sheet import get_product_master_from_sheet
+        return get_product_master_from_sheet()
+    except Exception:
+        return None
+
+
+def get_product_master_data() -> dict:
+    """シート優先で商品マスターデータを返す（失敗時はハードコードにフォールバック）"""
+    now = _time.time()
+    if _sheet_cache["data"] and now < _sheet_cache["expires"]:
+        return _sheet_cache["data"]
+    data = _load_from_sheet()
+    if data:
+        _sheet_cache["data"] = data
+        _sheet_cache["expires"] = now + 300
+        return data
+    return PRODUCT_MASTER
+
+
+def invalidate_product_master_cache() -> None:
+    """商品マスターのメモリキャッシュを破棄してシートから再読み込みさせる"""
+    _sheet_cache["data"] = None
+    _sheet_cache["expires"] = 0.0
+
+
 def get_product(product_id: int | str) -> ProductEntry | None:
     """WooCommerce product_idで商品構成を取得する"""
-    return PRODUCT_MASTER.get(str(product_id))
+    return get_product_master_data().get(str(product_id))
 
 
 def get_enabled_products(config: dict | None = None) -> list[ProductEntry]:
     """有効な商品構成の一覧を返す（configオーバーライド対応）"""
     result = []
-    for pid, p in PRODUCT_MASTER.items():
+    for pid, p in get_product_master_data().items():
         entry = dict(p)
         if config:
             enabled_key = f"product_{pid}_enabled"

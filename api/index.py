@@ -339,53 +339,33 @@ def _check_admin_auth() -> bool:
 
 @app.route('/api/admin/master', methods=['GET'])
 def admin_get_master():
-    """管理画面用：全マスターデータ＋現在のconfig設定を返す"""
-    # ヘッダー認証
+    """管理画面用：全マスターデータ（シート優先）＋現在のconfig設定を返す"""
     if not _check_admin_auth():
         return jsonify({"error": "認証が必要です"}), 401
 
-    from api.stone_master import STONE_MASTER
-    from api.stone_combination_master import STONE_COMBINATION_MASTER
-    from api.product_master import PRODUCT_MASTER
-    from api.matching import SCORE_WEIGHTS
+    from api.stone_master import get_stone_master_data, get_stone
+    from api.stone_combination_master import get_combination_master_data
+    from api.product_master import get_product_master_data
+    from api.matching import SCORE_WEIGHTS, get_score_weights
 
-    cfg = get_config()
+    # スコア重み（configオーバーライド反映済み）
+    score_weights = get_score_weights()
 
-    # スコア重みにconfigオーバーライドを適用
-    score_weights = dict(SCORE_WEIGHTS)
-    for k in ["element", "aura", "theme", "worry"]:
-        key = f"score_weight_{k}"
-        if key in cfg:
-            try:
-                score_weights[k] = float(cfg[key])
-            except (ValueError, TypeError):
-                pass
-
-    # 商品マスター（configオーバーライド反映済み）
+    # 商品マスター（シート優先）
     products = []
-    for pid, p in PRODUCT_MASTER.items():
+    for pid, p in get_product_master_data().items():
         entry = dict(p)
-        enabled_key = f"product_{pid}_enabled"
-        priority_key = f"product_{pid}_priority"
-        if enabled_key in cfg:
-            entry["enabled"] = str(cfg[enabled_key]).lower() == "true"
-        if priority_key in cfg:
-            try:
-                entry["priority_weight"] = float(cfg[priority_key])
-            except (ValueError, TypeError):
-                pass
         entry["product_id"] = pid
-        # 石名を付加
-        from api.stone_master import get_stone
         entry["stone_names"] = [
             (get_stone(part["stone_id"]) or {}).get("stone_name", part["stone_id"])
             for part in entry["parts"]
         ]
         products.append(entry)
 
-    # 石マスター（表示用に整形）
+    # 石マスター（シート優先・表示用整形）
+    stone_master = get_stone_master_data()
     stones = []
-    for sid, s in STONE_MASTER.items():
+    for sid, s in stone_master.items():
         stones.append({
             "stone_id": sid,
             "stone_name": s["stone_name"],
@@ -396,12 +376,12 @@ def admin_get_master():
             "weight": s.get("weight", 1.0),
         })
 
-    # 組み合わせマスター（frozensetをリストに変換）
+    # 組み合わせマスター（シート優先・frozensetをリストに変換）
     combinations = []
-    for key, effect in STONE_COMBINATION_MASTER.items():
-        stone_ids = list(key)
+    for key, effect in get_combination_master_data().items():
+        stone_ids = sorted(list(key))
         stone_names = [
-            (STONE_MASTER.get(sid) or {}).get("stone_name", sid)
+            (stone_master.get(sid) or {}).get("stone_name", sid)
             for sid in stone_ids
         ]
         combinations.append({
@@ -444,6 +424,73 @@ def admin_update_config():
     if errors:
         return jsonify({"status": "partial", "errors": errors}), 207
     return jsonify({"status": "ok", "updated": list(updates.keys())})
+
+
+@app.route('/api/admin/migrate-to-sheets', methods=['POST'])
+def admin_migrate_to_sheets():
+    """管理画面用：Pythonハードコードのマスターデータをシートに書き込む（初回移行）"""
+    if not _check_admin_auth():
+        return jsonify({"error": "認証が必要です"}), 401
+
+    from api.stone_master import STONE_MASTER
+    from api.stone_combination_master import STONE_COMBINATION_MASTER
+    from api.product_master import PRODUCT_MASTER
+    from api.utils_sheet import (
+        write_stone_master_to_sheet,
+        write_combination_master_to_sheet,
+        write_product_master_to_sheet,
+    )
+
+    results = {}
+    errors = []
+
+    try:
+        write_stone_master_to_sheet(STONE_MASTER)
+        results["stone_master"] = f"✅ {len(STONE_MASTER)}件書き込み"
+    except Exception as e:
+        errors.append(f"石マスター: {e}")
+        results["stone_master"] = "❌ 失敗"
+
+    try:
+        write_combination_master_to_sheet(STONE_COMBINATION_MASTER)
+        results["stone_combinations"] = f"✅ {len(STONE_COMBINATION_MASTER)}件書き込み"
+    except Exception as e:
+        errors.append(f"組み合わせマスター: {e}")
+        results["stone_combinations"] = "❌ 失敗"
+
+    try:
+        write_product_master_to_sheet(PRODUCT_MASTER)
+        results["product_master"] = f"✅ {len(PRODUCT_MASTER)}件書き込み"
+    except Exception as e:
+        errors.append(f"商品マスター: {e}")
+        results["product_master"] = "❌ 失敗"
+
+    # 移行後にキャッシュをクリアしてシートから再読み込みさせる
+    from api.stone_master import invalidate_stone_master_cache
+    from api.stone_combination_master import invalidate_combination_master_cache
+    from api.product_master import invalidate_product_master_cache
+    invalidate_stone_master_cache()
+    invalidate_combination_master_cache()
+    invalidate_product_master_cache()
+
+    status = "ok" if not errors else "partial"
+    return jsonify({"status": status, "results": results, "errors": errors})
+
+
+@app.route('/api/admin/clear-cache', methods=['POST'])
+def admin_clear_cache():
+    """管理画面用：全マスターキャッシュをクリアしてシートから再読み込みさせる"""
+    if not _check_admin_auth():
+        return jsonify({"error": "認証が必要です"}), 401
+
+    from api.stone_master import invalidate_stone_master_cache
+    from api.stone_combination_master import invalidate_combination_master_cache
+    from api.product_master import invalidate_product_master_cache
+    invalidate_stone_master_cache()
+    invalidate_combination_master_cache()
+    invalidate_product_master_cache()
+
+    return jsonify({"status": "ok", "message": "全マスターキャッシュをクリアしました"})
 
 
 @app.route('/')

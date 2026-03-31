@@ -133,7 +133,41 @@ STONE_COMBINATION_MASTER: dict[frozenset, CombinationEffect] = {
 }
 
 
+import time as _time
+
+# シートキャッシュ（TTL: 300秒）
+_sheet_cache: dict = {"data": None, "expires": 0.0}
+
+
+def _load_from_sheet() -> dict | None:
+    """stone_combinationsシートからデータを読み込む（失敗時はNone）"""
+    try:
+        from api.utils_sheet import get_combination_master_from_sheet
+        return get_combination_master_from_sheet()
+    except Exception:
+        return None
+
+
+def get_combination_master_data() -> dict:
+    """シート優先で組み合わせマスターデータを返す（失敗時はハードコードにフォールバック）"""
+    now = _time.time()
+    if _sheet_cache["data"] and now < _sheet_cache["expires"]:
+        return _sheet_cache["data"]
+    data = _load_from_sheet()
+    if data:
+        _sheet_cache["data"] = data
+        _sheet_cache["expires"] = now + 300
+        return data
+    return STONE_COMBINATION_MASTER
+
+
+def invalidate_combination_master_cache() -> None:
+    """組み合わせマスターのメモリキャッシュを破棄してシートから再読み込みさせる"""
+    _sheet_cache["data"] = None
+    _sheet_cache["expires"] = 0.0
+
+
 def get_combination_effect(stone_id_a: str, stone_id_b: str) -> CombinationEffect | None:
     """2つの石IDの組み合わせ効果を取得する。なければNoneを返す。"""
     key = frozenset({stone_id_a, stone_id_b})
-    return STONE_COMBINATION_MASTER.get(key)
+    return get_combination_master_data().get(key)

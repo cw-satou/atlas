@@ -24,6 +24,9 @@ PROFILE_SHEET_NAME = "profiles"
 LOG_SHEET_NAME = "diagnosis_logs"
 ORDER_SHEET_NAME = "orders"
 CONFIG_SHEET_NAME = "config"
+STONE_MASTER_SHEET_NAME = "stone_master"
+STONE_COMBO_SHEET_NAME = "stone_combinations"
+PRODUCT_MASTER_SHEET_NAME = "product_master"
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -51,6 +54,27 @@ EXPECTED_HEADERS = {
         "last_updated",
     ],
     CONFIG_SHEET_NAME: ["key", "value", "updated_at", "note"],
+    STONE_MASTER_SHEET_NAME: [
+        "stone_id", "stone_name", "description",
+        "fire", "earth", "air", "water",
+        "aura_intuition", "aura_clarity", "aura_stability", "aura_vitality",
+        "aura_protection", "aura_love", "aura_expression", "aura_courage",
+        "zodiac", "planet", "birth_month", "numerology_affinity",
+        "color_tags", "theme_tags", "worry_tags", "weight",
+    ],
+    STONE_COMBO_SHEET_NAME: [
+        "stone_id_a", "stone_id_b",
+        "theme_tags", "worry_tags",
+        "bonus_fire", "bonus_earth", "bonus_air", "bonus_water",
+        "aura_bonus_intuition", "aura_bonus_clarity", "aura_bonus_stability",
+        "aura_bonus_vitality", "aura_bonus_protection", "aura_bonus_love",
+        "aura_bonus_expression", "aura_bonus_courage",
+        "meaning", "weight",
+    ],
+    PRODUCT_MASTER_SHEET_NAME: [
+        "product_id", "woo_product_id", "sku",
+        "parts_json", "gender_mode", "enabled", "priority_weight",
+    ],
 }
 
 # ===== キャッシュ =====
@@ -446,3 +470,226 @@ def get_profile(user_id: str) -> dict | None:
         "bead_size_mm": int(data["bead_size_mm"]) if data.get("bead_size_mm") else None,
         "bracelet_type": data.get("bracelet_type"),
     }
+
+
+# ===== マスターシート操作 =====
+
+def _split_tags(value: str) -> list[str]:
+    """カンマ区切り文字列をリストに変換"""
+    return [v.strip() for v in str(value).split(",") if v.strip()] if value else []
+
+
+def _join_tags(tags: list) -> str:
+    """リストをカンマ区切り文字列に変換"""
+    return ",".join(str(t) for t in tags)
+
+
+def _safe_float(val, default: float = 0.0) -> float:
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_bool(val) -> bool:
+    if isinstance(val, bool):
+        return val
+    return str(val).strip().lower() in ("true", "1", "yes", "はい")
+
+
+# ----- 石マスター -----
+
+def get_stone_master_from_sheet() -> dict | None:
+    """stone_masterシートから石マスターを読み込んでdictで返す。データなし or エラーはNone。"""
+    try:
+        ws = _get_worksheet(STONE_MASTER_SHEET_NAME)
+        rows = ws.get_all_records()
+        if not rows:
+            return None
+        result = {}
+        for r in rows:
+            sid = r.get("stone_id", "").strip()
+            if not sid:
+                continue
+            result[sid] = {
+                "stone_name":  r.get("stone_name", sid),
+                "description": r.get("description", ""),
+                "element_profile": {
+                    "fire":  _safe_float(r.get("fire",  0)),
+                    "earth": _safe_float(r.get("earth", 0)),
+                    "air":   _safe_float(r.get("air",   0)),
+                    "water": _safe_float(r.get("water", 0)),
+                },
+                "aura_profile": {
+                    k: _safe_float(r.get(f"aura_{k}", 0))
+                    for k in ["intuition", "clarity", "stability", "vitality",
+                               "protection", "love", "expression", "courage"]
+                },
+                "zodiac":              _split_tags(r.get("zodiac", "")),
+                "planet":              _split_tags(r.get("planet", "")),
+                "birth_month":         [int(x) for x in _split_tags(r.get("birth_month", "")) if x.isdigit()],
+                "numerology_affinity": [int(x) for x in _split_tags(r.get("numerology_affinity", "")) if x.isdigit()],
+                "color_tags":          _split_tags(r.get("color_tags", "")),
+                "theme_tags":          _split_tags(r.get("theme_tags", "")),
+                "worry_tags":          _split_tags(r.get("worry_tags", "")),
+                "weight":              _safe_float(r.get("weight", 1.0), 1.0),
+            }
+        logger.info("石マスターをシートから読み込みました: %d件", len(result))
+        return result if result else None
+    except Exception as e:
+        logger.warning("石マスターシート読み込みエラー: %s", e)
+        return None
+
+
+def write_stone_master_to_sheet(stone_master: dict) -> None:
+    """石マスターdictをstone_masterシートに書き込む（全上書き）"""
+    ws = _get_worksheet(STONE_MASTER_SHEET_NAME)
+    headers = EXPECTED_HEADERS[STONE_MASTER_SHEET_NAME]
+    rows = [headers]
+    for sid, s in stone_master.items():
+        ep = s.get("element_profile", {})
+        ap = s.get("aura_profile", {})
+        rows.append([
+            sid,
+            s.get("stone_name", ""),
+            s.get("description", ""),
+            ep.get("fire", 0), ep.get("earth", 0), ep.get("air", 0), ep.get("water", 0),
+            ap.get("intuition", 0), ap.get("clarity", 0), ap.get("stability", 0),
+            ap.get("vitality", 0), ap.get("protection", 0), ap.get("love", 0),
+            ap.get("expression", 0), ap.get("courage", 0),
+            _join_tags(s.get("zodiac", [])),
+            _join_tags(s.get("planet", [])),
+            _join_tags(s.get("birth_month", [])),
+            _join_tags(s.get("numerology_affinity", [])),
+            _join_tags(s.get("color_tags", [])),
+            _join_tags(s.get("theme_tags", [])),
+            _join_tags(s.get("worry_tags", [])),
+            s.get("weight", 1.0),
+        ])
+    ws.clear()
+    ws.update("A1", rows, value_input_option="USER_ENTERED")
+    _invalidate_cache(STONE_MASTER_SHEET_NAME)
+    logger.info("石マスターをシートに書き込みました: %d件", len(stone_master))
+
+
+# ----- 組み合わせマスター -----
+
+def get_combination_master_from_sheet() -> dict | None:
+    """stone_combinationsシートから組み合わせマスターを読み込む。キーはfrozenset。"""
+    try:
+        ws = _get_worksheet(STONE_COMBO_SHEET_NAME)
+        rows = ws.get_all_records()
+        if not rows:
+            return None
+        result = {}
+        for r in rows:
+            sid_a = r.get("stone_id_a", "").strip()
+            sid_b = r.get("stone_id_b", "").strip()
+            if not sid_a or not sid_b:
+                continue
+            key = frozenset({sid_a, sid_b})
+            result[key] = {
+                "theme_tags": _split_tags(r.get("theme_tags", "")),
+                "worry_tags": _split_tags(r.get("worry_tags", "")),
+                "element_bonus": {
+                    "fire":  _safe_float(r.get("bonus_fire",  0)),
+                    "earth": _safe_float(r.get("bonus_earth", 0)),
+                    "air":   _safe_float(r.get("bonus_air",   0)),
+                    "water": _safe_float(r.get("bonus_water", 0)),
+                },
+                "aura_bonus": {
+                    k: _safe_float(r.get(f"aura_bonus_{k}", 0))
+                    for k in ["intuition", "clarity", "stability", "vitality",
+                               "protection", "love", "expression", "courage"]
+                },
+                "meaning": r.get("meaning", ""),
+                "weight":  _safe_float(r.get("weight", 1.0), 1.0),
+            }
+        logger.info("組み合わせマスターをシートから読み込みました: %d件", len(result))
+        return result if result else None
+    except Exception as e:
+        logger.warning("組み合わせマスターシート読み込みエラー: %s", e)
+        return None
+
+
+def write_combination_master_to_sheet(combo_master: dict) -> None:
+    """組み合わせマスターdictをstone_combinationsシートに書き込む（全上書き）"""
+    ws = _get_worksheet(STONE_COMBO_SHEET_NAME)
+    headers = EXPECTED_HEADERS[STONE_COMBO_SHEET_NAME]
+    rows = [headers]
+    for key, effect in combo_master.items():
+        stone_ids = sorted(list(key))  # 順序を固定
+        eb = effect.get("element_bonus", {})
+        ab = effect.get("aura_bonus", {})
+        rows.append([
+            stone_ids[0], stone_ids[1] if len(stone_ids) > 1 else "",
+            _join_tags(effect.get("theme_tags", [])),
+            _join_tags(effect.get("worry_tags", [])),
+            eb.get("fire", 0), eb.get("earth", 0), eb.get("air", 0), eb.get("water", 0),
+            ab.get("intuition", 0), ab.get("clarity", 0), ab.get("stability", 0),
+            ab.get("vitality", 0), ab.get("protection", 0), ab.get("love", 0),
+            ab.get("expression", 0), ab.get("courage", 0),
+            effect.get("meaning", ""),
+            effect.get("weight", 1.0),
+        ])
+    ws.clear()
+    ws.update("A1", rows, value_input_option="USER_ENTERED")
+    _invalidate_cache(STONE_COMBO_SHEET_NAME)
+    logger.info("組み合わせマスターをシートに書き込みました: %d件", len(combo_master))
+
+
+# ----- 商品マスター -----
+
+def get_product_master_from_sheet() -> dict | None:
+    """product_masterシートから商品マスターを読み込む。キーはproduct_id文字列。"""
+    try:
+        import json as _json
+        ws = _get_worksheet(PRODUCT_MASTER_SHEET_NAME)
+        rows = ws.get_all_records()
+        if not rows:
+            return None
+        result = {}
+        for r in rows:
+            pid = str(r.get("product_id", "")).strip()
+            if not pid:
+                continue
+            parts_raw = r.get("parts_json", "[]")
+            try:
+                parts = _json.loads(parts_raw) if parts_raw else []
+            except Exception:
+                parts = []
+            result[pid] = {
+                "woo_product_id": int(r.get("woo_product_id", 0)),
+                "sku":            str(r.get("sku", "")),
+                "parts":          parts,
+                "gender_mode":    str(r.get("gender_mode", "unisex")),
+                "enabled":        _safe_bool(r.get("enabled", True)),
+                "priority_weight": _safe_float(r.get("priority_weight", 1.0), 1.0),
+            }
+        logger.info("商品マスターをシートから読み込みました: %d件", len(result))
+        return result if result else None
+    except Exception as e:
+        logger.warning("商品マスターシート読み込みエラー: %s", e)
+        return None
+
+
+def write_product_master_to_sheet(product_master: dict) -> None:
+    """商品マスターdictをproduct_masterシートに書き込む（全上書き）"""
+    import json as _json
+    ws = _get_worksheet(PRODUCT_MASTER_SHEET_NAME)
+    headers = EXPECTED_HEADERS[PRODUCT_MASTER_SHEET_NAME]
+    rows = [headers]
+    for pid, p in product_master.items():
+        rows.append([
+            pid,
+            p.get("woo_product_id", ""),
+            p.get("sku", ""),
+            _json.dumps(p.get("parts", []), ensure_ascii=False),
+            p.get("gender_mode", "unisex"),
+            str(p.get("enabled", True)).lower(),
+            p.get("priority_weight", 1.0),
+        ])
+    ws.clear()
+    ws.update("A1", rows, value_input_option="USER_ENTERED")
+    _invalidate_cache(PRODUCT_MASTER_SHEET_NAME)
+    logger.info("商品マスターをシートに書き込みました: %d件", len(product_master))

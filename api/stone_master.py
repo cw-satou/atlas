@@ -293,11 +293,45 @@ STONE_MASTER: dict = {
 }
 
 
+import time as _time
+
+# シートキャッシュ（TTL: 300秒）
+_sheet_cache: dict = {"data": None, "expires": 0.0}
+
+
+def _load_from_sheet() -> dict | None:
+    """stone_masterシートからデータを読み込む（失敗時はNone）"""
+    try:
+        from api.utils_sheet import get_stone_master_from_sheet
+        return get_stone_master_from_sheet()
+    except Exception:
+        return None
+
+
+def get_stone_master_data() -> dict:
+    """シート優先でマスターデータを返す（失敗時はハードコードにフォールバック）"""
+    now = _time.time()
+    if _sheet_cache["data"] and now < _sheet_cache["expires"]:
+        return _sheet_cache["data"]
+    data = _load_from_sheet()
+    if data:
+        _sheet_cache["data"] = data
+        _sheet_cache["expires"] = now + 300
+        return data
+    return STONE_MASTER
+
+
+def invalidate_stone_master_cache() -> None:
+    """石マスターのメモリキャッシュを破棄してシートから再読み込みさせる"""
+    _sheet_cache["data"] = None
+    _sheet_cache["expires"] = 0.0
+
+
 def get_stone(stone_id: str) -> dict | None:
     """石IDで石データを取得する"""
-    return STONE_MASTER.get(stone_id)
+    return get_stone_master_data().get(stone_id)
 
 
 def get_all_stone_ids() -> list[str]:
     """全石IDのリストを返す"""
-    return list(STONE_MASTER.keys())
+    return list(get_stone_master_data().keys())
