@@ -741,28 +741,32 @@ def generate_bracelet_reading(user_input: dict, chart_data: dict = None) -> dict
             generate_stone_beads_image,
         )
 
-        # diagnosis_id用のシードキー（同じ診断なら同じ画像）
-        seed_base = f"{user_input.get('birth', {}).get('date', '')}-{card['name']}"
-
         chart_info_for_img = build_chart_data(user_input, chart_data)
         main_stone_name = result["stones_main"][0]["name"]
         sub_stone_names = [s["name"] for s in result.get("stones_sub", [])]
 
         result["stone_colors"] = get_stone_colors(main_stone_name)
 
+        # キャッシュキーは内容ベース（同じ石・エレメント・カードなら別ユーザーでもキャッシュ共有）
+        # 誕生日など個人情報はキーに含めない
+        position_key = "up" if is_upright else "rev"
+        element_key  = f"{chart_info_for_img['element_lack_ja']}-{main_stone_name}"
+        balance_key  = f"{chart_info_for_img['fire']}-{chart_info_for_img['earth']}-{chart_info_for_img['wind']}-{chart_info_for_img['water']}"
+        beads_key    = "-".join(sorted([main_stone_name] + sub_stone_names))
+
         # 4枚の画像を並列生成
         with ThreadPoolExecutor(max_workers=4) as executor:
             f_oracle = executor.submit(
                 generate_oracle_card_image,
                 card["name"], card["en"], is_upright,
-                f"oracle-{seed_base}",
+                f"oracle-{card['name']}-{position_key}",   # カード名+正逆のみ
             )
             f_destiny = executor.submit(
                 generate_destiny_scene,
                 chart_info_for_img["element_lack_ja"],
                 main_stone_name,
-                f"destiny-{seed_base}",
-                result.get("destiny_map", ""),      # AIテキストをプロンプトに反映
+                f"destiny-{element_key}",                   # エレメント+石名のみ
+                result.get("destiny_map", ""),
             )
             f_element = executor.submit(
                 generate_element_balance,
@@ -770,14 +774,14 @@ def generate_bracelet_reading(user_input: dict, chart_data: dict = None) -> dict
                 chart_info_for_img["earth"],
                 chart_info_for_img["wind"],
                 chart_info_for_img["water"],
-                f"element-{seed_base}",
-                result.get("element_diagnosis", ""), # AIテキストをプロンプトに反映
+                f"element-{balance_key}",                   # バランス数値のみ
+                result.get("element_diagnosis", ""),
             )
             f_beads = executor.submit(
                 generate_stone_beads_image,
                 main_stone_name,
                 sub_stone_names,
-                f"beads-{seed_base}",
+                f"beads-{beads_key}",                       # 石名の組み合わせのみ
             )
             oracle_image  = f_oracle.result()
             destiny_image = f_destiny.result()

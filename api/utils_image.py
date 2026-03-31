@@ -353,9 +353,8 @@ def generate_destiny_scene(
         "Dreamlike ethereal atmosphere, constellation patterns in the sky. "
         "Digital painting, artstation quality, ultra detailed, no text, no people."
     )
-    # テキスト内容も含めたシードにすることでメッセージごとに固有の画像を生成
-    full_seed = f"{seed_key}-{context_text[:40]}" if context_text else seed_key
-    cache = _build_cache_key("destiny", full_seed) if full_seed else ""
+    # キャッシュキーはテキストを含めない（同じ条件なら必ずキャッシュヒット）
+    cache = _build_cache_key("destiny", seed_key) if seed_key else ""
     return _generate_image_gemini(prompt, cache)
 
 
@@ -383,8 +382,8 @@ def generate_element_balance(
         "Sacred geometry background, abstract spiritual visualization, "
         "glowing particles, symmetrical composition, ethereal digital art, no text."
     )
-    full_seed = f"{seed_key}-{context_text[:40]}" if context_text else seed_key
-    cache = _build_cache_key("element", full_seed) if full_seed else ""
+    # キャッシュキーはテキストを含めない（同じ条件なら必ずキャッシュヒット）
+    cache = _build_cache_key("element", seed_key) if seed_key else ""
     return _generate_image_gemini(prompt, cache)
 
 
