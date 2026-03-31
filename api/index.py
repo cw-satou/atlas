@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()  # ローカル開発時に .env を読み込む（本番では無視される）
 
 from api.diagnose import diagnose, build_bracelet
-from api.utils_sheet import get_diagnosis, upsert_profile, get_profile
+from api.utils_sheet import get_diagnosis, upsert_profile, get_profile, add_bracelet_selection
 from api.utils_perplexity import generate_today_fortune, calculate_chart
 from api.utils_geocode import geocode
 from api.woo_webhook import woo_webhook
@@ -131,6 +131,33 @@ def route_profile():
     except Exception as e:
         logger.exception("プロフィール取得エラー")
         return jsonify({"error": "プロフィールの読み込みに失敗しました"}), 500
+
+
+# ===== ブレスレット選択記録 =====
+
+@app.route('/api/select-product', methods=['POST'])
+def route_select_product():
+    """ユーザーがブレスレットを選んで商品ページへ進んだ際に記録する"""
+    import uuid as _uuid
+    from datetime import datetime, timezone
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        data = {
+            "selection_id":  str(_uuid.uuid4()),
+            "created_at":    datetime.now(timezone.utc).isoformat(),
+            "user_id":       body.get("user_id", ""),
+            "diagnosis_id":  body.get("diagnosis_id", ""),
+            "rank":          body.get("rank", ""),
+            "woo_product_id": body.get("woo_product_id", ""),
+            "sku":           body.get("sku", ""),
+            "product_name":  body.get("product_name", ""),
+            "score":         body.get("score", ""),
+        }
+        add_bracelet_selection(data)
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.exception("ブレスレット選択記録エラー")
+        return jsonify({"error": str(e)}), 500
 
 
 # ===== ヘルスチェック & フロントエンド =====

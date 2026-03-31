@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 PROFILE_SHEET_NAME = "profiles"
 LOG_SHEET_NAME = "diagnosis_logs"
 ORDER_SHEET_NAME = "orders"
+BRACELET_SELECTION_SHEET_NAME = "bracelet_selections"
 CONFIG_SHEET_NAME = "config"
 STONE_MASTER_SHEET_NAME = "stone_master"
 STONE_COMBO_SHEET_NAME = "stone_combinations"
@@ -74,6 +75,10 @@ EXPECTED_HEADERS = {
     PRODUCT_MASTER_SHEET_NAME: [
         "product_id", "woo_product_id", "sku",
         "parts_json", "gender_mode", "enabled", "priority_weight",
+    ],
+    BRACELET_SELECTION_SHEET_NAME: [
+        "selection_id", "created_at", "user_id", "diagnosis_id",
+        "rank", "woo_product_id", "sku", "product_name", "score",
     ],
 }
 
@@ -245,6 +250,27 @@ def _update_cell_with_retry(
                 raise
 
 
+# ===== ブレスレット選択記録 =====
+
+def add_bracelet_selection(data: dict):
+    """ユーザーがブレスレットを選んで商品ページへ進んだ記録をシートに追記する"""
+    sheet = _get_worksheet(BRACELET_SELECTION_SHEET_NAME)
+    row = [
+        data.get("selection_id", ""),
+        data.get("created_at", ""),
+        data.get("user_id", ""),
+        data.get("diagnosis_id", ""),
+        data.get("rank", ""),
+        data.get("woo_product_id", ""),
+        data.get("sku", ""),
+        data.get("product_name", ""),
+        data.get("score", ""),
+    ]
+    _append_row_with_retry(sheet, row)
+    logger.info("ブレスレット選択記録: user_id=%s, sku=%s",
+                data.get("user_id"), data.get("sku"))
+
+
 # ===== 注文操作 =====
 
 def add_order(data: dict):
@@ -374,14 +400,12 @@ def format_stones(stone_counts: dict) -> str:
 # ===== プロフィール操作 =====
 
 def upsert_profile(profile: dict):
-    """ユーザープロフィールを追加または更新する
+    """ユーザープロフィールを追加または更新する（バッチ書き込みで1回のAPI呼び出し）
 
     Args:
         profile: user_id, gender, birth{date,time,place}, wrist_inner_cm 等を含む辞書
     """
     ws = _get_profile_sheet()
-    header = ws.row_values(1)
-    col_index = {name: i + 1 for i, name in enumerate(header)}
 
     user_id = profile.get("user_id")
     if not user_id:
@@ -389,28 +413,36 @@ def upsert_profile(profile: dict):
         return
 
     birth = profile.get("birth", {}) or {}
+    now = datetime.now(timezone.utc).isoformat()
 
-    # 既存行を検索（なければ新規行）
-    try:
-        cell = ws.find(user_id)
-        row = cell.row
-    except gspread.exceptions.CellNotFound:
-        row = len(ws.get_all_values()) + 1
+    # ヘッダー順に合わせた行データを一括構築
+    row_values = [
+        user_id,
+        profile.get("name", ""),
+        profile.get("gender", ""),
+        birth.get("date", ""),
+        birth.get("time", ""),
+        birth.get("place", ""),
+        profile.get("wrist_inner_cm", ""),
+        profile.get("bead_size_mm", ""),
+        profile.get("bracelet_type", ""),
+        now,
+    ]
 
-    def set_cell(col_name: str, value):
-        if col_name in col_index:
-            _update_cell_with_retry(ws, row, col_index[col_name], value)
-
-    set_cell("user_id", user_id)
-    set_cell("name", profile.get("name", ""))
-    set_cell("gender", profile.get("gender", ""))
-    set_cell("birth_date", birth.get("date", ""))
-    set_cell("birth_time", birth.get("time", ""))
-    set_cell("birth_place", birth.get("place", ""))
-    set_cell("wrist_inner_cm", profile.get("wrist_inner_cm", ""))
-    set_cell("last_updated", datetime.now(timezone.utc).isoformat())
-    set_cell("bead_size_mm", profile.get("bead_size_mm", ""))
-    set_cell("bracelet_type", profile.get("bracelet_type", ""))
+    # 既存行を検索（first column = user_id）
+    id_col = ws.col_values(1)
+    if user_id in id_col:
+        row_num = id_col.index(user_id) + 1
+        # 既存行を一括上書き（1回のAPI呼び出し）
+        headers = EXPECTED_HEADERS[PROFILE_SHEET_NAME]
+        col_end = chr(ord('A') + len(headers) - 1)
+        ws.update(f"A{row_num}:{col_end}{row_num}", [row_values],
+                  value_input_option="USER_ENTERED")
+        logger.info("プロフィール更新: user_id=%s", user_id)
+    else:
+        # 新規行を追加（1回のAPI呼び出し）
+        _append_row_with_retry(ws, row_values)
+        logger.info("プロフィール新規作成: user_id=%s", user_id)
 
 
 # ===== 設定マスター操作 =====

@@ -169,15 +169,30 @@ export function goToSelectedProduct(): void {
 
   const diagnosisId = window.diagnosisId;
 
+  // ブレスレット選択をシートに記録（fire-and-forget）
+  fetch('/api/select-product', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id:       state.userId || '',
+      diagnosis_id:  diagnosisId || '',
+      rank:          rec.rank,
+      woo_product_id: rec.woo_product_id,
+      sku:           rec.sku,
+      product_name:  rec.product_name,
+      score:         rec.score,
+    }),
+  }).catch(() => { /* サイレント失敗 */ });
+
   if (rec.product_url) {
     const url = diagnosisId
       ? `${rec.product_url}${rec.product_url.includes('?') ? '&' : '?'}d=${diagnosisId}`
       : rec.product_url;
-    window.location.href = url;
+    window.open(url, '_blank');
   } else if (rec.woo_product_id) {
     const base = `https://spicastar.info/atlas/?p=${rec.woo_product_id}`;
     const url = diagnosisId ? `${base}&d=${diagnosisId}` : base;
-    window.location.href = url;
+    window.open(url, '_blank');
   } else {
     addMsg('商品ページの情報が見つかりませんでした。', false);
   }
