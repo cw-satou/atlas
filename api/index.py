@@ -141,6 +141,32 @@ def health():
     return jsonify({"status": "ok", "service": "星の羅針盤 API"})
 
 
+@app.route('/api/health/sheets-write', methods=['GET'])
+def health_sheets_write():
+    """Sheetsへの書き込みテスト（テスト行を追加して即削除）"""
+    try:
+        from api.utils_sheet import _get_worksheet, LOG_SHEET_NAME
+        import datetime, uuid
+        ws = _get_worksheet(LOG_SHEET_NAME)
+        test_id = f"TEST-{uuid.uuid4().hex[:8]}"
+        test_row = [
+            test_id,
+            datetime.datetime.utcnow().isoformat(),
+            "テスト石",
+            "", "", "", "", "", "", "", "", "", "", False,
+        ]
+        ws.append_row(test_row, value_input_option='USER_ENTERED')
+        # 書き込んだ行を探して削除
+        ids = ws.col_values(1)
+        if test_id in ids:
+            row_num = ids.index(test_id) + 1
+            ws.delete_rows(row_num)
+            return jsonify({"status": "ok", "message": "書き込み・削除テスト成功"})
+        return jsonify({"status": "error", "message": "書き込み後に行が見つかりませんでした"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route('/api/health/sheets', methods=['GET'])
 def health_sheets():
     """Google Sheets接続診断エンドポイント"""

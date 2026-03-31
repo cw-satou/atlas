@@ -229,15 +229,18 @@ def diagnose():
             "user_line_id":   line_user_id or "",
         }
 
+        sheets_error = None
         try:
             add_diagnosis(log_data)
+            logger.info("診断ログ保存完了: diagnosis_id=%s", diagnosis_id)
         except Exception as e:
+            sheets_error = str(e)
             logger.error("スプレッドシート保存エラー: %s", e)
 
         elapsed = time.time() - start_time
         logger.info("診断完了: %.2f秒", elapsed)
 
-        return jsonify({
+        response = {
             "diagnosis_id":         diagnosis_id,
             "recommendations":      recommendations,
             "stone_name":           ai_result.get("stone_name", ""),
@@ -269,7 +272,10 @@ def diagnose():
                 "mars":    chart_info.get("mars_ja", ""),
             },
             "line_user_id":         line_user_id,
-        })
+            # 保存エラーがあれば診断結果に含める（フロント側でログ確認用）
+            **({"_sheets_error": sheets_error} if sheets_error else {}),
+        }
+        return jsonify(response)
 
     except Exception:
         logger.exception("診断処理中にエラーが発生")
