@@ -217,6 +217,16 @@
     }
     return null;
   }
+  function setCookie(name, value, days = 365) {
+    const d = /* @__PURE__ */ new Date();
+    d.setTime(d.getTime() + days * 24 * 60 * 60 * 1e3);
+    const expires = "expires=" + d.toUTCString();
+    document.cookie = `${name}=${value};${expires};path=/`;
+  }
+  function generateUserId() {
+    const s4 = () => Math.floor((1 + Math.random()) * 65536).toString(16).substring(1);
+    return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
+  }
   function getGreetingMessage() {
     const hour = (/* @__PURE__ */ new Date()).getHours();
     const nameForDisplay = getUserNameForDisplay();
@@ -1155,7 +1165,16 @@ ${adviceList}`);
   window.restartFromBeginning = restartFromBeginning;
   window.submitTodayComment = submitTodayComment;
   async function initChatFlow() {
-    state.userId = getCookie("hoshin_user_id");
+    if (window.LINE_USER_ID) {
+      state.userId = window.LINE_USER_ID;
+      setCookie("hoshin_user_id", state.userId);
+    } else {
+      state.userId = getCookie("hoshin_user_id");
+      if (!state.userId) {
+        state.userId = generateUserId();
+        setCookie("hoshin_user_id", state.userId);
+      }
+    }
     if (state.userId) {
       try {
         const res = await fetch(`/api/profile?user_id=${encodeURIComponent(state.userId)}`);

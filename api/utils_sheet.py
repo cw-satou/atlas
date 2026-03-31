@@ -13,6 +13,7 @@ import os
 import json
 import time
 import logging
+from datetime import datetime, timezone
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -44,8 +45,9 @@ EXPECTED_HEADERS = {
         "total", "payment_method",
     ],
     PROFILE_SHEET_NAME: [
-        "user_id", "gender", "birth_date", "birth_time",
+        "user_id", "name", "gender", "birth_date", "birth_time",
         "birth_place", "wrist_inner_cm", "bead_size_mm", "bracelet_type",
+        "last_updated",
     ],
 }
 
@@ -374,11 +376,13 @@ def upsert_profile(profile: dict):
             _update_cell_with_retry(ws, row, col_index[col_name], value)
 
     set_cell("user_id", user_id)
+    set_cell("name", profile.get("name", ""))
     set_cell("gender", profile.get("gender", ""))
     set_cell("birth_date", birth.get("date", ""))
     set_cell("birth_time", birth.get("time", ""))
     set_cell("birth_place", birth.get("place", ""))
     set_cell("wrist_inner_cm", profile.get("wrist_inner_cm", ""))
+    set_cell("last_updated", datetime.now(timezone.utc).isoformat())
     set_cell("bead_size_mm", profile.get("bead_size_mm", ""))
     set_cell("bracelet_type", profile.get("bracelet_type", ""))
 

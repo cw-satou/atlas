@@ -13,6 +13,8 @@ import { initLiff, fillOrderNote } from './liff';
 import {
   getGreetingMessage,
   getCookie,
+  setCookie,
+  generateUserId,
   loadProfileFromLocalStorage,
 } from './profile';
 import {
@@ -72,8 +74,17 @@ window.submitTodayComment = submitTodayComment;
 // ===== 初期化 =====
 
 async function initChatFlow(): Promise<void> {
-  // ユーザーIDをCookieから取得
-  state.userId = getCookie('hoshin_user_id');
+  // LINE IDを優先、なければCookieから取得、それもなければ新規生成して保存
+  if (window.LINE_USER_ID) {
+    state.userId = window.LINE_USER_ID;
+    setCookie('hoshin_user_id', state.userId);
+  } else {
+    state.userId = getCookie('hoshin_user_id');
+    if (!state.userId) {
+      state.userId = generateUserId();
+      setCookie('hoshin_user_id', state.userId);
+    }
+  }
 
   if (state.userId) {
     try {
