@@ -22,7 +22,6 @@ from api.utils_sheet import add_diagnosis, format_stones, update_diagnosis
 from api.utils_geocode import geocode
 from api.matching import recommend_products, build_user_profile
 from api.utils_woo import fetch_woo_products
-from api.utils_image import generate_bracelet_image
 
 logger = logging.getLogger(__name__)
 
@@ -168,22 +167,8 @@ def diagnose():
         # マッチングエンジンで上位3商品を取得
         top_products = recommend_products(user_profile, top_n=3)
 
-        # ランク1商品のブレスレット画像をGeminiで生成
-        # シードは石名ベース（同じ石構成なら毎回キャッシュヒット）
-        rank1_bracelet_image: str | None = None
-        if top_products:
-            rank1_stones = top_products[0].get("stones", [])
-            # 石名リストをソートして順番に依存しない一定のシードにする
-            stones_seed = "-".join(sorted(rank1_stones)) if rank1_stones else "default"
-            try:
-                rank1_bracelet_image = generate_bracelet_image(
-                    main_stone=rank1_stones[0] if rank1_stones else "水晶",
-                    sub_stones=rank1_stones[1:] if len(rank1_stones) > 1 else None,
-                    seed_key=f"bracelet-{stones_seed}",
-                )
-                logger.info("ランク1ブレスレット画像生成: %s", "成功" if rank1_bracelet_image else "スキップ")
-            except Exception as e:
-                logger.warning("ランク1ブレスレット画像生成エラー: %s", e)
+        # ブレスレット画像はutils_perplexity側で並列生成済み（ai_result["images"]["bracelet"]）
+        rank1_bracelet_image: str | None = (ai_result.get("images") or {}).get("bracelet")
 
         # WooCommerceから商品詳細を取得して補完
         woo_ids = [p["woo_product_id"] for p in top_products]
