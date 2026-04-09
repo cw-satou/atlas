@@ -209,24 +209,22 @@ def diagnose():
         problem_text = req.get("problem", "") or ""
         base_profile = _build_user_profile_from_chart(chart_info, concerns, problem_text)
 
-        # ===== 予備マッチング（石名をAIに渡すため先行実行） =====
-        # base_profile（ルールベースのみ）で仮の1位商品を取得し、
-        # その主要石をAIプロンプトに注入することで bracelet_proposal の一貫性を確保する。
-        # 後続の本マッチング（AI重み反映後）で順位が変わることがあるが、
-        # 上位にランクされた石は概ね共通するため一致率は高い。
-        try:
-            prelim_products = recommend_products(base_profile, top_n=1)
-            prelim_rank1_stone = (prelim_products[0].get("stones") or [""])[0] if prelim_products else ""
-        except Exception as e:
-            logger.warning("予備マッチングエラー（石名なしでAI実行）: %s", e)
-            prelim_rank1_stone = ""
+        # ===== Step1: マッチングで石を確定 =====
+        # AIに石名を伝えるため、マッチングを先に1回だけ実行する。
+        # AI重みによる再マッチングは廃止（石名がすり替わり信頼を損なうため）。
+        top_products = recommend_products(base_profile, top_n=3)
 
-        logger.info("予備マッチング完了: 暫定主要石=%s", prelim_rank1_stone)
+        rank1_stones = top_products[0].get("stones", []) if top_products else []
+        rank1_main_stone = rank1_stones[0] if rank1_stones else ""
+        rank1_seed = "-".join(sorted(rank1_stones))
 
-        # AI診断文＋オラクルカード生成（テーマ・悩み重みも出力させる）
-        # prelim_rank1_stone を渡すことで bracelet_proposal がその石を中心に生成される
+        logger.info("マッチング完了: 主要石=%s", rank1_main_stone)
+
+        # ===== Step2: 確定した石名でAI診断文を生成 =====
+        # rank1_main_stone をプロンプトに注入することで
+        # bracelet_proposal / stone_support_message / 締めくくりメッセージが一致する。
         ai_result = generate_bracelet_reading(
-            req, chart_data=chart_data, main_stone_name=prelim_rank1_stone
+            req, chart_data=chart_data, main_stone_name=rank1_main_stone
         )
         if not isinstance(ai_result, dict):
             return jsonify({"error": "AIレスポンスが不正です"}), 500
@@ -234,37 +232,9 @@ def diagnose():
             logger.error("AI診断エラー: %s", ai_result["error"])
             return jsonify({"error": ai_result["error"]}), 500
 
-        # AIが出力した重みでプロファイルのタグを強化
-        # theme_weights / worry_weights: {タグ名: 0.0〜1.0}
-        # 重みの高い順にタグを並べ替えてマッチング精度を向上させる
-        theme_weights: dict = ai_result.get("theme_weights") or {}
-        worry_weights: dict = ai_result.get("worry_weights") or {}
-
-        ai_theme_tags = sorted(theme_weights, key=lambda k: theme_weights[k], reverse=True)
-        ai_worry_tags = sorted(worry_weights, key=lambda k: worry_weights[k], reverse=True)
-
-        # AI由来タグを先頭に、ルールベースタグを後ろに結合（重複除去）
-        merged_theme = list(dict.fromkeys(ai_theme_tags + base_profile.get("theme_tags", [])))
-        merged_worry = list(dict.fromkeys(ai_worry_tags + base_profile.get("worry_tags", [])))
-
-        user_profile = {**base_profile, "theme_tags": merged_theme, "worry_tags": merged_worry}
-
-        # 本マッチング（AI重み反映後）
-        top_products = recommend_products(user_profile, top_n=3)
-
-        # ランク1の主要石を確定し、AI結果に反映
-        rank1_stones = top_products[0].get("stones", []) if top_products else []
-        rank1_main_stone = rank1_stones[0] if rank1_stones else ""
-        rank1_seed = "-".join(sorted(rank1_stones))
+        # stone_name を確定石で設定
         if rank1_main_stone:
             ai_result["stone_name"] = rank1_main_stone
-
-        # 石名が変わった場合はログに記録
-        if prelim_rank1_stone and rank1_main_stone and prelim_rank1_stone != rank1_main_stone:
-            logger.info(
-                "マッチング石名変化: 暫定=%s → 確定=%s（bracelet_proposalは暫定石で生成済み）",
-                prelim_rank1_stone, rank1_main_stone,
-            )
 
         # WooCommerce取得とGemini石ビーズ画像生成を並列実行
         rank1_bracelet_image: str | None = None
